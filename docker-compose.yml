@@ -1,0 +1,14 @@
+﻿version: "3.8"
+services:
+  backend:
+    build: ./packages/backend
+    ports:
+      - "4000:4000"
+  frontend:
+    build: ./packages/frontend
+    ports:
+      - "3000:3000"
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: example
