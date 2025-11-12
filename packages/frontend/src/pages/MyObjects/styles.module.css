@@ -1,0 +1,212 @@
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding-bottom: 48px;
+}
+
+.pageHeader {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.pageHeaderAction {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filtersBar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid #e6ebf4;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.search {
+    flex: 1 1 320px;
+}
+
+.search :global(.ant-input-affix-wrapper) {
+    background: #f5f6f8;
+    border-color: #d1d5db;
+    border-radius: 8px;
+    padding: 8px 12px;
+    height: 40px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.search :global(.ant-input-affix-wrapper:hover),
+.search :global(.ant-input-affix-wrapper:focus),
+.search :global(.ant-input-affix-wrapper-focused) {
+    border-color: #1f71ff;
+    box-shadow: 0 0 0 2px rgba(31, 113, 255, 0.16);
+    background: #f1f4fb;
+}
+
+.search :global(.ant-input) {
+    font-size: 16px;
+}
+
+.searchIcon {
+    color: #9CA3AF;
+    font-size: 16px;
+}
+
+.controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.iconButton {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    color: #6b7280;
+    transition: border-color 0.3s ease, color 0.3s ease, transform 0.3s ease, background 0.3s ease;
+}
+
+.iconButton:hover,
+.iconButton:focus {
+    color: #1f71ff;
+    border-color: rgba(31, 113, 255, 0.5);
+    background: rgba(31, 113, 255, 0.08);
+    transform: translateY(-1px);
+}
+
+.filtersActionButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    color: #374151;
+    padding: 0 16px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease, color 0.3s ease;
+}
+
+.filtersActionButton:hover,
+.filtersActionButton:focus {
+    border-color: rgba(31, 113, 255, 0.5);
+    color: #1f71ff;
+    box-shadow: 0 6px 16px rgba(12, 18, 29, 0.08);
+}
+
+.viewToggle :global(.ant-segmented) {
+    background: #f5f6f8;
+    border-radius: 8px;
+    padding: 4px;
+}
+
+.viewToggle :global(.ant-segmented-item) {
+    padding: 4px 10px;
+}
+
+.viewToggle :global(.ant-segmented-thumb) {
+    border-radius: 6px;
+}
+
+.viewToggle :global(.ant-segmented-item-selected) {
+    color: #1f71ff;
+}
+
+.viewToggle :global(.anticon) {
+    font-size: 18px;
+}
+
+.tableCard {
+    border-radius: 12px;
+    border: 1px solid #e6ebf4;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.tableCard :global(.ant-table) {
+    border-radius: 12px;
+}
+
+.tableCard :global(.ant-table-thead > tr > th) {
+    background: #f9fafb;
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+}
+
+.tableCard :global(.ant-table-tbody > tr:hover > td) {
+    background: rgba(31, 113, 255, 0.04);
+}
+
+.statusTag {
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-weight: 500;
+    font-size: 13px;
+    border: none;
+}
+
+.statusActive {
+    color: #166534;
+    background: #DCFCE7;
+}
+
+.statusHidden {
+    color: #1F2937;
+    background: #F3F4F6;
+}
+
+.tableActionButton {
+    color: #6b7280;
+}
+
+.tableActionButton:hover,
+.tableActionButton:focus {
+    color: #1f71ff;
+}
+
+@media (max-width: 991px) {
+    .filtersBar {
+        padding: 16px 12px;
+    }
+
+    .controls {
+        width: 100%;
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 575px) {
+    .page {
+        gap: 20px;
+    }
+
+    .filtersBar {
+        gap: 12px;
+    }
+
+    .filtersActionButton {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .controls {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+}

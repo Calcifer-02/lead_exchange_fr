@@ -1,34 +1,33 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import AuthPage from './pages/Auth'
+import MainLayout from './components/layout/MainLayout'
+import DashboardPage from './pages/Dashboard'
+import MyObjectsPage from './pages/MyObjects'
+import NewObjectPage from './pages/NewObject'
+import LeadsCatalogPage from './pages/LeadsCatalog'
+import DealsPage from './pages/Deals'
+import FinancePage from './pages/Finance'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/auth" element={<AuthPage />} />
+
+        <Route path="/" element={<MainLayout />}>
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="my-objects" element={<MyObjectsPage />} />
+          <Route path="my-objects/new" element={<NewObjectPage />} />
+          <Route path="leads-catalog" element={<LeadsCatalogPage />} />
+          <Route path="deals" element={<DealsPage />} />
+          <Route path="finance" element={<FinancePage />} />
+        </Route>
+
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
 

@@ -1,0 +1,235 @@
+.authPage {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #F5F6F8;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  padding: 20px 40px;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.logo {
+  height: 40px;
+  width: auto;
+  margin-right: 12px;
+}
+
+.brandName {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+  padding: 40px 20px;
+}
+
+.authContainer {
+  width: 448px;
+  min-height: 650px;
+  background: white;
+  border-radius: 12px;
+  padding: 40px 32px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+.authHeader {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.authTitle {
+  font-size: 28px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 8px 0;
+}
+
+.authDescription {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
+}
+
+.authTabs {
+  margin-bottom: 24px;
+}
+
+.tabSwitcher {
+  display: flex;
+  background: #F5F6F8;
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 24px;
+  position: relative;
+}
+
+.tabButton {
+  flex: 1;
+  height: 44px;
+  border: none;
+  background: transparent;
+  color: #6C757D;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.3s ease;
+  position: relative;
+  z-index: 2;
+  outline: none;
+}
+
+.tabButton:hover {
+  color: #1a1a1a;
+}
+
+.tabButton:focus {
+  outline: none;
+}
+
+.tabButton:active {
+  outline: none;
+}
+
+.tabButtonActive {
+  color: #1a1a1a;
+}
+
+.tabIndicator {
+  position: absolute;
+  height: calc(100% - 8px);
+  width: calc(50% - 6px);
+  background: white;
+  border-radius: 10px;
+  top: 4px;
+  left: 4px;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  z-index: 1;
+}
+
+.tabIndicatorRegister {
+  transform: translateX(calc(100% + 4px));
+}
+
+.tabContent {
+  display: none;
+}
+
+.tabContentActive {
+  display: block;
+}
+
+.authForm {
+  margin-top: 24px;
+}
+
+.authForm :global(.ant-input-affix-wrapper),
+.authForm :global(.ant-input) {
+  border-radius: 8px;
+}
+
+.authForm :global(.ant-form-item) {
+  margin-bottom: 20px;
+}
+
+.authButton {
+  height: 48px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  background-color: #1F71FF !important;
+  border-color: #1F71FF !important;
+  margin-top: 8px;
+}
+
+.authButton:hover {
+  background-color: #0d5dd9 !important;
+  border-color: #0d5dd9 !important;
+}
+
+.termsRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.termsRow :global(.ant-form-item) {
+  margin-bottom: 0;
+  flex: 0 0 auto;
+  flex: 1;
+}
+
+.termsRow :global(.ant-form-item-explain-error) {
+  position: absolute;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.termsCheckbox :global(.ant-checkbox-wrapper) {
+  color: inherit;
+}
+
+.termsCheckbox :global(.ant-checkbox-wrapper.error) {
+  color: #ff4d4f;
+}
+
+.forgotPassword {
+  margin: 0;
+}
+
+.forgotPassword a {
+  color: #1F71FF;
+  font-size: 14px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.forgotPassword a:hover {
+  text-decoration: underline;
+}
+
+.authForm :global(.ant-checkbox-wrapper) {
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+}
+
+.authForm :global(.ant-checkbox) {
+  top: 0;
+  display: flex;
+  align-items: center;
+}
+
+.authForm :global(.ant-checkbox-inner) {
+  width: 18px;
+  height: 18px;
+}
+
+.authForm :global(.ant-checkbox + span) {
+  display: flex;
+  align-items: center;
+  line-height: 18px;
+}
+
+.authForm :global(.ant-checkbox-checked .ant-checkbox-inner) {
+  background-color: #1F71FF;
+  border-color: #1F71FF;
+}
+
+.authForm :global(.ant-checkbox-wrapper:hover .ant-checkbox-inner),
+.authForm :global(.ant-checkbox:hover .ant-checkbox-inner) {
+  border-color: #1F71FF;
+}
+
