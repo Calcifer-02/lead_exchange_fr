@@ -7,13 +7,14 @@ import {
   LoadingOutlined,
   PictureOutlined,
   SaveOutlined,
-  TagsOutlined,
 } from '@ant-design/icons';
 import { Button, Card, Form, Input, InputNumber, message, Select, Space, Typography, Upload } from 'antd';
 import type { UploadFile, UploadProps } from 'antd';
 import type { RcFile } from 'antd/es/upload';
 import { useNavigate } from 'react-router-dom';
-import { fileAPI } from '../../api/file';
+import { leadsAPI } from '../../api';
+import type { CreateLeadRequest } from '../../types';
+import ImageGallery from '../../components/ImageGallery';
 import styles from './styles.module.css';
 
 type DealType = 'sale' | 'rent';
@@ -23,43 +24,31 @@ interface FormValues {
   title: string;
   city: string;
   address: string;
-  price: number;
-  area: number;
-  floor: number;
-  floorsTotal: number;
-  rooms: number;
+  price: number | undefined;
+  area: number | undefined;
+  floor: number | undefined;
+  floorsTotal: number | undefined;
+  rooms: number | undefined;
   propertyType: string;
   dealType: DealType;
   description: string;
-  tags: string[];
   buildingType: BuildingType;
 }
 
 const INITIAL_VALUES: FormValues = {
-  title: 'Двухкомнатная квартира в ЖК «Горизонт»',
-  city: 'Москва',
-  address: 'ул. Ленина, д. 45, кв. 112',
-  price: 15500000,
-  area: 65.5,
-  floor: 7,
-  floorsTotal: 16,
-  rooms: 2,
-  propertyType: 'flat',
+  title: '',
+  city: '',
+  address: '',
+  price: undefined,
+  area: undefined,
+  floor: undefined,
+  floorsTotal: undefined,
+  rooms: undefined,
+  propertyType: '',
   dealType: 'sale',
-  description:
-    'Просторная двухкомнатная квартира с дизайнерским ремонтом в новом жилом комплексе «Горизонт». Панорамные окна, вид на парк. Развитая инфраструктура и закрытая территория.',
-  tags: ['exclusive'],
+  description: '',
   buildingType: 'new',
 };
-
-const TAG_OPTIONS = [
-  { value: 'exclusive', label: 'Эксклюзив' },
-  { value: 'urgent', label: 'Срочно' },
-  { value: 'discount', label: 'Скидка' },
-  { value: 'verified', label: 'Проверено' },
-];
-
-const PREVIEW_PLACEHOLDER = 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=1200&q=80';
 
 const formatPrice = (value?: number) =>
   typeof value === 'number' ? new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 0 }).format(value) : '—';
@@ -69,26 +58,13 @@ const NewObjectPage = () => {
   const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [fileList, setFileList] = useState<UploadFile[]>([
-    {
-      uid: '1',
-      name: 'living-room.jpg',
-      status: 'done',
-      url: PREVIEW_PLACEHOLDER,
-    },
-    {
-      uid: '2',
-      name: 'kitchen.jpg',
-      status: 'done',
-      url: PREVIEW_PLACEHOLDER,
-    },
-  ]);
+  const [fileList, setFileList] = useState<UploadFile[]>([]);
 
   const values = Form.useWatch([], form) as FormValues | undefined;
   const currentValues = values ?? INITIAL_VALUES;
 
   const previewImage = useMemo(
-    () => fileList[0]?.url ?? fileList[0]?.thumbUrl ?? PREVIEW_PLACEHOLDER,
+    () => fileList[0]?.url ?? fileList[0]?.thumbUrl,
     [fileList]
   );
 
@@ -114,43 +90,34 @@ const NewObjectPage = () => {
       const blobUrl = URL.createObjectURL(file.originFileObj);
 
       try {
-        console.log('Starting upload for:', file.name, 'Size:', file.size, 'Type:', file.type);
-        const serverUrl = await fileAPI.uploadFile(file.originFileObj);
-        console.log('Upload successful, Server URL:', serverUrl);
+        console.log('Converting file to base64:', file.name, 'Size:', file.size, 'Type:', file.type);
 
-        // Обновляем fileList с blob URL для preview и сохраняем server URL в data
+        // Конвертируем файл в base64
+        const base64 = await fileToBase64(file.originFileObj);
+        console.log('Base64 conversion successful, length:', base64.length);
+
+        // Обновляем fileList с blob URL для preview и сохраняем base64 в data
         const updatedFileList = newFileList.map((f) => {
           if (f.uid === file.uid) {
             return {
               ...f,
               status: 'done' as const,
               url: blobUrl, // Используем blob URL для отображения
-              response: { serverUrl }, // Сохраняем настоящий URL для будущего использования
+              response: { base64 }, // Сохраняем base64 для requirement
             };
           }
           return f;
         });
 
         setFileList(updatedFileList);
-        message.success(`${file.name} успешно загружен`);
+        message.success(`${file.name} успешно загруж��н`);
       } catch (error) {
-        console.error('Upload error:', error);
+        console.error('Base64 conversion error:', error);
 
         // Очищаем blob URL при ошибке
         URL.revokeObjectURL(blobUrl);
 
-        // Извлекаем детальное сообщение об ошибке
-        let errorMessage = `Не удалось загрузить ${file.name}`;
-        if (error && typeof error === 'object') {
-          const axiosError = error as { response?: { data?: { message?: string; error?: string } } };
-          if (axiosError.response?.data?.message) {
-            errorMessage += `: ${axiosError.response.data.message}`;
-          } else if (axiosError.response?.data?.error) {
-            errorMessage += `: ${axiosError.response.data.error}`;
-          }
-        }
-
-        message.error(errorMessage);
+        message.error(`Не удалось обработать ${file.name}`);
 
         // Помечаем файл как ошибочный
         const updatedFileList = newFileList.map((f) => {
@@ -170,7 +137,7 @@ const NewObjectPage = () => {
   };
 
   const beforeUpload = (file: RcFile) => {
-    // Список поддерживаемых форматов согласно API
+    // Список поддерживаемых форм��тов согласно API
     const supportedFormats = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     const isSupported = supportedFormats.includes(file.type);
 
@@ -192,13 +159,65 @@ const NewObjectPage = () => {
     try {
       setSubmitting(true);
       await form.validateFields();
-      // TODO: Отправить данные на сервер
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      message.success(publish ? 'Объект сохранён и отправлен на публикацию' : 'Черновик объекта сохранён');
-      
+
+      // Получаем данные формы
+      const formData = form.getFieldsValue();
+
+      // Создаем requirement JSON с характеристиками объекта
+      const requirementData = {
+        city: formData.city,
+        address: formData.address,
+        price: formData.price,
+        area: formData.area,
+        floor: formData.floor,
+        floorsTotal: formData.floorsTotal,
+        rooms: formData.rooms,
+        propertyType: formData.propertyType,
+        dealType: formData.dealType,
+        buildingType: formData.buildingType,
+        photos: fileList
+          .filter((f) => f.status === 'done' && f.response?.base64)
+          .map((f) => f.response.base64),
+      };
+
+      // Кодируем requirement в base64
+      const requirementJson = JSON.stringify(requirementData);
+      const requirementBase64 = btoa(unescape(encodeURIComponent(requirementJson)));
+
+      // Получаем контактные данные пользователя
+      const userEmail = localStorage.getItem('userEmail') || 'user@example.com';
+      const contactName = `${localStorage.getItem('userFirstName') || 'Пользователь'} ${localStorage.getItem('userLastName') || ''}`.trim();
+      const contactPhone = localStorage.getItem('userPhone') || '+7 (999) 123-45-67';
+
+      // Создаем объект для API
+      const leadData: CreateLeadRequest = {
+        title: formData.title,
+        description: formData.description,
+        requirement: requirementBase64,
+        contactName,
+        contactPhone,
+        contactEmail: userEmail,
+      };
+
+      console.log('Creating lead with data:', leadData);
+
+      // Отправляем запрос на создание лида
+      const response = await leadsAPI.createLead(leadData);
+
+      console.log('Lead created successfully:', response.lead.leadId);
+
+      // Определяем статус лида
+      const statusMessage = publish
+        ? 'Объект сохранён и отправлен на публикацию'
+        : 'Черновик объекта сохранён';
+
+      message.success(statusMessage);
+
       // Перенаправляем обратно на список объектов
       navigate('/my-objects');
     } catch (error) {
+      console.error('Failed to create lead:', error);
+
       if (
         error &&
         typeof error === 'object' &&
@@ -207,7 +226,9 @@ const NewObjectPage = () => {
       ) {
         message.error('Проверьте заполнение обязательных полей');
       } else {
-        message.error('Не удалось сохранить объект');
+        const axiosError = error as { response?: { data?: { message?: string } } };
+        const errorMessage = axiosError.response?.data?.message || 'Не удалось сохранить объект';
+        message.error(errorMessage);
       }
     } finally {
       setSubmitting(false);
@@ -277,11 +298,7 @@ const NewObjectPage = () => {
               </div>
 
               <div className={styles.fieldRow}>
-                <Form.Item
-                  label="Тип объекта"
-                  name="propertyType"
-                  rules={[{ required: true, message: 'Выберите тип объекта' }]}
-                >
+                <Form.Item label="Тип объекта" name="propertyType" rules={[{ required: true, message: 'Выберите тип объекта' }]}>
                   <Select
                     size="large"
                     options={[
@@ -348,19 +365,12 @@ const NewObjectPage = () => {
                 </Upload.Dragger>
               </Form.Item>
 
-              <div className={styles.galleryGrid}>
-                {fileList.slice(0, 4).map((file) => (
-                  <img key={file.uid} src={file.url ?? file.thumbUrl} alt={file.name} className={styles.galleryImage} />
-                ))}
-                {Array.from({ length: Math.max(0, 4 - fileList.length) }).map((_, index) => (
-                  <div key={`placeholder-${index}`} className={styles.galleryPlaceholder} />
-                ))}
-              </div>
+              <ImageGallery fileList={fileList} />
 
               <Form.Item
                 label="Описание"
                 name="description"
-                rules={[{ required: true, message: 'Добавьте описание объекта' }]}
+                rules={[{ required: true, message: 'Добавьте о��исание объекта' }]}
               >
                 <Input.TextArea rows={5} placeholder="Расскажите об особенностях объекта" />
               </Form.Item>
@@ -371,48 +381,6 @@ const NewObjectPage = () => {
               <Typography.Title level={4} className={styles.sectionTitle}>
                 Дополнительно
               </Typography.Title>
-
-              <Form.Item label="Теги">
-                <Form.Item name="tags" noStyle>
-                  <Select mode="multiple" options={TAG_OPTIONS} className={styles.hiddenInput} />
-                </Form.Item>
-                <div className={styles.tagGroup}>
-                  {TAG_OPTIONS.map((tag) => {
-                    const active = currentValues.tags?.includes(tag.value);
-                    return (
-                      <span
-                        key={tag.value}
-                        className={`${styles.tagToggle} ${active ? styles.tagToggleActive : ''}`}
-                        onClick={() => {
-                          const next = new Set(currentValues.tags ?? []);
-                          if (active) {
-                            next.delete(tag.value);
-                          } else {
-                            next.add(tag.value);
-                          }
-                          form.setFieldsValue({ tags: Array.from(next) });
-                        }}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
-                            const next = new Set(currentValues.tags ?? []);
-                            if (active) {
-                              next.delete(tag.value);
-                            } else {
-                              next.add(tag.value);
-                            }
-                            form.setFieldsValue({ tags: Array.from(next) });
-                          }
-                        }}
-                      >
-                        {tag.label}
-                      </span>
-                    );
-                  })}
-                </div>
-              </Form.Item>
 
               <Form.Item label="Тип дома">
                 <Form.Item name="buildingType" noStyle>
@@ -481,17 +449,18 @@ const NewObjectPage = () => {
         {/* Preview Card */}
         <Card className={`${styles.card} ${styles.previewCard}`} styles={{ body: { padding: 0 } }}>
           <div className={styles.previewMedia}>
-            <img src={previewImage} alt="Предпросмотр объекта" className={styles.previewCover} />
+            {previewImage ? (
+              <img src={previewImage} alt="Предпросмотр объекта" className={styles.previewCover} />
+            ) : (
+              <div className={styles.previewSkeleton}>
+                <div className={styles.previewSkeletonIcon}>
+                  <PictureOutlined />
+                </div>
+                <div className={styles.previewSkeletonText}>Фото не загружено</div>
+              </div>
+            )}
           </div>
           <div className={styles.previewBody}>
-            <Space size={8}>
-              {currentValues.tags?.includes('exclusive') && <span className={styles.previewTag}>Эксклюзив</span>}
-              {currentValues.tags?.includes('urgent') && (
-                <span className={`${styles.previewTag} ${styles.previewTagUrgent}`}>
-                  Срочно
-                </span>
-              )}
-            </Space>
             <div className={styles.previewInfo}>
               <Typography.Title level={4} className={styles.previewPrice}>
                 {formatPrice(currentValues.price)} ₽
@@ -520,14 +489,6 @@ const NewObjectPage = () => {
             </Typography.Paragraph>
             <Space direction="vertical" size={8}>
               <Space size={6}>
-                <TagsOutlined className={styles.previewIcon} />
-                <Typography.Text type="secondary">
-                  {currentValues.tags?.length
-                    ? currentValues.tags.map((tag) => TAG_OPTIONS.find((t) => t.value === tag)?.label ?? tag).join(', ')
-                    : 'Без тегов'}
-                </Typography.Text>
-              </Space>
-              <Space size={6}>
                 <HomeOutlined className={styles.previewIcon} />
                 <Typography.Text type="secondary">
                   {currentValues.buildingType === 'new' ? 'Новостройка' : 'Вторичка'}
@@ -543,3 +504,17 @@ const NewObjectPage = () => {
 
 export default NewObjectPage;
 
+function fileToBase64(file: RcFile): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      // Удаляем префикс и декодируем base64
+      const base64 = reader.result?.toString().split(',')[1];
+      resolve(base64 || '');
+    };
+    reader.onerror = (error) => {
+      reject(error);
+    };
+  });
+}

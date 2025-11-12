@@ -2,19 +2,11 @@ import React, { useState } from 'react';
 import { Form, Input, Button, Checkbox, message } from 'antd';
 import { UserOutlined, LockOutlined, PhoneOutlined, HomeOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { authAPI } from '../../api/auth';
-import type { LoginRequest, RegisterRequest } from '../../api/auth';
+import { authAPI } from '../../api';
+import type { LoginRequest, RegisterRequest } from '../../types';
 import styles from './styles.module.css';
 
 type TabType = 'login' | 'register';
-
-interface ApiError {
-  response?: {
-    data?: {
-      message?: string;
-    };
-  };
-}
 
 const AuthPage: React.FC = () => {
   const navigate = useNavigate();
@@ -24,6 +16,24 @@ const AuthPage: React.FC = () => {
   const [registerForm] = Form.useForm();
   const [loginCheckboxError, setLoginCheckboxError] = useState(false);
   const [registerCheckboxError, setRegisterCheckboxError] = useState(false);
+
+  // Функция для декодирования JWT токена
+  const decodeJWT = (token: string) => {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      return JSON.parse(jsonPayload);
+    } catch (error) {
+      console.error('Failed to decode JWT:', error);
+      return null;
+    }
+  };
 
   const formatPhoneNumber = (value: string) => {
     if (!value) return value;
@@ -75,20 +85,31 @@ const AuthPage: React.FC = () => {
         password: values.password,
       });
 
-      // Сохраняем токен и email пользователя
+      // Декодируем JWT токен для получения userId
+      const decodedToken = decodeJWT(response.token);
+      const userId = decodedToken?.uid;
+
+      if (!userId) {
+        console.error('Failed to extract userId from token');
+        message.error('Ошибка авторизации: не удалось получить ID пользователя');
+        return;
+      }
+
+      // Сохраняем токен, email и userId пользователя
       localStorage.setItem('token', response.token);
       localStorage.setItem('userEmail', values.email);
+      localStorage.setItem('userId', userId);
 
       message.success(`Добро пожаловать, ${values.email}!`);
-      console.log('Успешная авторизация. Token:', response.token);
+      console.log('Успешная авторизация. Token:', response.token, 'UserId:', userId);
 
       // Редирект на страницу дашборда
       setTimeout(() => {
         navigate('/dashboard');
       }, 500);
     } catch (error: unknown) {
-      const apiError = error as ApiError;
-      const errorMessage = apiError.response?.data?.message || 'Ошибка авторизации';
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      const errorMessage = axiosError.response?.data?.message || 'Ошибка авторизации';
       message.error(errorMessage);
     } finally {
       setLoading(false);
@@ -120,6 +141,11 @@ const AuthPage: React.FC = () => {
       await authAPI.register(registerData);
       message.success('Регистрация успешна! Теперь вы можете войти.');
 
+      // Сохраняем данные профиля для будущего использования
+      localStorage.setItem('userFirstName', values.firstName);
+      localStorage.setItem('userLastName', values.lastName);
+      localStorage.setItem('userPhone', phoneDigits);
+
       // Переносим email и пароль в форму входа
       loginForm.setFieldsValue({
         email: values.email,
@@ -129,13 +155,13 @@ const AuthPage: React.FC = () => {
       setActiveTab('login');
       registerForm.resetFields();
     } catch (error: unknown) {
-      const apiError = error as ApiError;
-      console.error('Ошибка регистрации:', apiError);
+      const axiosError = error as { response?: { data?: Record<string, unknown> } };
+      console.error('Ошибка регистрации:', axiosError);
 
       let errorMessage = 'Ошибка регистрации';
 
-      if (apiError.response?.data) {
-        const data = apiError.response.data as Record<string, unknown>;
+      if (axiosError.response?.data) {
+        const data = axiosError.response.data;
         errorMessage = (data.message as string) || (data.error as string) || JSON.stringify(data);
       }
 
@@ -185,6 +211,7 @@ const AuthPage: React.FC = () => {
         <Form.Item
           name="agreeToTerms"
           valuePropName="checked"
+          initialValue={true}
           rules={[
             {
               validator: (_, value) => {
@@ -306,6 +333,7 @@ const AuthPage: React.FC = () => {
         <Form.Item
           name="agreeToTerms"
           valuePropName="checked"
+          initialValue={true}
           rules={[
             {
               validator: (_, value) => {
@@ -390,4 +418,3 @@ const AuthPage: React.FC = () => {
 };
 
 export default AuthPage;
-

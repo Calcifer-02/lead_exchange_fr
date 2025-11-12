@@ -1,0 +1,29 @@
+.gallerySkeleton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 120px;
+  border: 2px dashed #d9d9d9;
+  border-radius: 8px;
+  background-color: #fafafa;
+  color: #999;
+}
+
+.skeletonIcon {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.skeletonText {
+  font-size: 14px;
+}
+
+.galleryImage {
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.galleryImage:hover {
+  transform: scale(1.05);
+}

@@ -17,10 +17,3 @@ export interface UploadFilesRequest {
 export interface UploadFilesResponse {
   urls: string[];
 }
-
-export interface ApiError {
-  code: number;
-  message: string;
-  details?: unknown[];
-}
-
