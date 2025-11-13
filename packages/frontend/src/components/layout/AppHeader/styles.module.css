@@ -102,6 +102,127 @@
   background-color: #0d5dd9;
 }
 
+/* Search Results Dropdown */
+.mlResultsContainer {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e6ebf4;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-height: 400px;
+  overflow-y: auto;
+  z-index: 1000;
+  margin-top: 4px;
+}
+
+.resultsList {
+  padding: 8px 0;
+}
+
+.resultsList :global(.ant-list-item) {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.2s ease;
+}
+
+.resultsList :global(.ant-list-item:hover) {
+  background-color: #f5f5f5;
+}
+
+.resultsList :global(.ant-list-item:last-child) {
+  border-bottom: none;
+}
+
+.resultItem {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.propertyAvatar {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  background: #1890ff;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 18px;
+}
+
+.similarityBadge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #52c41a;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  border: 2px solid white;
+  min-width: 30px;
+  text-align: center;
+}
+
+.propertyTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.propertyTitle span {
+  font-weight: 600;
+  color: #262626;
+}
+
+.propertyDetails {
+  font-size: 12px;
+  color: #8c8c8c;
+}
+
+.price {
+  font-weight: 600;
+  color: #1890ff;
+  margin-bottom: 2px;
+}
+
+.specs {
+  margin-bottom: 4px;
+}
+
+.features {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.features :global(.ant-tag) {
+  margin: 0;
+  font-size: 10px;
+  padding: 1px 6px;
+}
+
+.loadingContainer {
+  padding: 20px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #666;
+}
+
+.noResults {
+  padding: 20px;
+  text-align: center;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .header {
@@ -152,4 +273,3 @@
     font-size: 14px;
   }
 }
-

@@ -27,7 +27,7 @@ function App() {
           <Route path="finance" element={<FinancePage />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/auth" replace />} />
       </Routes>
     </BrowserRouter>
   )
