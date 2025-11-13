@@ -146,9 +146,9 @@ const NewObjectPage = () => {
       return false;
     }
 
-    const isLt10M = file.size / 1024 / 1024 < 10;
-    if (!isLt10M) {
-      message.error('Размер файла не должен превышать 10MB');
+    const isLt100M = file.size / 1024 / 1024 < 100;
+    if (!isLt100M) {
+      message.error('Размер файла не должен превышать 100MB');
       return false;
     }
 
@@ -258,7 +258,7 @@ const NewObjectPage = () => {
               <Typography.Title level={4} className={styles.sectionTitle}>
                 Основная информация
               </Typography.Title>
-              <Form.Item label="Заголовок" name="title" rules={[{ required: true, message: 'Введите заголовок' }]}>
+              <Form.Item label="Заголовок" name="title" rules={[{ required: true, message: 'Введите заголовок' }, { min: 3, message: 'Заголовок должен содержать не менее 3 символов' }]}>
                 <Input placeholder="Например, квартира с видом на парк" size="large" />
               </Form.Item>
 
@@ -361,7 +361,7 @@ const NewObjectPage = () => {
                   <p className="ant-upload-text">
                     {uploading ? 'Загрузка...' : 'Перетащите файлы сюда'}
                   </p>
-                  <p className="ant-upload-hint">или нажмите, чтобы выбрать. JPEG, PNG, WebP до 10MB</p>
+                  <p className="ant-upload-hint">или нажмите, чтобы выбрать. JPEG, PNG, WebP до 100MB</p>
                 </Upload.Dragger>
               </Form.Item>
 
@@ -491,7 +491,7 @@ const NewObjectPage = () => {
               <Space size={6}>
                 <HomeOutlined className={styles.previewIcon} />
                 <Typography.Text type="secondary">
-                  {currentValues.buildingType === 'new' ? 'Новостройка' : 'Вторичка'}
+                  {currentValues.buildingType === 'new' ? 'Новостройка' : 'Втор��чка'}
                 </Typography.Text>
               </Space>
             </Space>

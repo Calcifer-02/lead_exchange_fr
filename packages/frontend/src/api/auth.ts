@@ -21,6 +21,7 @@ export interface AuthResponse {
   token: string;
 }
 
+
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -79,3 +80,58 @@ export const authAPI = {
   },
 };
 
+
+export const isAuthenticated = (): boolean => {
+  const token = localStorage.getItem('token');
+  return !!token;
+};
+
+export const getToken = (): string | null => {
+  return localStorage.getItem('token');
+};
+
+export const getUserEmail = (): string | null => {
+  return localStorage.getItem('userEmail');
+};
+
+export const getUserId = (): string | null => {
+  return localStorage.getItem('userId');
+};
+
+export const logout = (): void => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('userEmail');
+  localStorage.removeItem('userId');
+  localStorage.removeItem('userFirstName');
+  localStorage.removeItem('userLastName');
+  localStorage.removeItem('userPhone');
+};
+
+// Функция для получения заголовка авторизации
+export const getAuthHeader = (): { Authorization: string } | object => {
+  const token = getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+// Функция для получения полной конфигурации с авторизацией
+export const getAuthConfig = () => {
+  const token = getToken();
+
+  if (token) {
+    return {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      }
+    };
+  }
+
+  // Для разработки - используем тестовый токен если нет реального
+  console.warn('⚠️ No auth token found, using test token for development');
+  return {
+    headers: {
+      'Authorization': 'Bearer test',
+      'Content-Type': 'application/json',
+    }
+  };
+};

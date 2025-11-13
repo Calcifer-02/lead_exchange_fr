@@ -1,0 +1,40 @@
+.loadingContainer {
+  text-align: center;
+  padding: 40px;
+}
+
+.loadingText {
+  margin-top: 16px;
+}
+
+.pageTitle {
+  margin-bottom: 24px;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.errorContainer {
+  /* Стили для контейнера ошибки */
+}
+
+.dealItem {
+  /* Стили для элементов списка сделок */
+}
+
+.dealTitle {
+  font-weight: bold;
+}
+
+.dealDescription {
+  /* Стили для описания сделки */
+}
+
+.buttonGroup {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.actionButton {
+  width: 140px; /* Фиксированная ширина для одинакового размера кнопок */
+}

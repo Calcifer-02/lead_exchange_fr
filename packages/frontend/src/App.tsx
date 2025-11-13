@@ -5,6 +5,7 @@ import DashboardPage from './pages/Dashboard'
 import MyObjectsPage from './pages/MyObjects'
 import NewObjectPage from './pages/NewObject'
 import LeadsCatalogPage from './pages/LeadsCatalog'
+import LeadDetailPage from './pages/LeadDetail'
 import DealsPage from './pages/Deals'
 import FinancePage from './pages/Finance'
 import './App.css'
@@ -21,6 +22,7 @@ function App() {
           <Route path="my-objects" element={<MyObjectsPage />} />
           <Route path="my-objects/new" element={<NewObjectPage />} />
           <Route path="leads-catalog" element={<LeadsCatalogPage />} />
+          <Route path="leads-catalog/:id" element={<LeadDetailPage />} />
           <Route path="deals" element={<DealsPage />} />
           <Route path="finance" element={<FinancePage />} />
         </Route>

@@ -2,4 +2,4 @@
 export * from './auth';
 export * from './file';
 export { leadsAPI } from './leads';
-
+export { dealsAPI } from './deals';

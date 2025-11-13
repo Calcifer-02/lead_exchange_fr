@@ -1,9 +1,5 @@
-import {
-  useEffect,
-  useState,
-  useMemo,
-  useRef
-} from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Card,
   Input,
@@ -25,7 +21,8 @@ import {
   Tooltip,
   Rate,
   Tabs,
-  List
+  List,
+  Descriptions
 } from 'antd';
 import {
   SearchOutlined,
@@ -42,8 +39,8 @@ import {
   ExportOutlined,
   SettingOutlined
 } from '@ant-design/icons';
-import { leadsAPI } from '../../api/leads';
-import type { Lead, LeadStatus } from '../../types/leads';
+import { leadsAPI } from '../../api';
+import type { Lead, LeadStatus } from '../../types';
 import styles from './styles.module.css';
 
 const { Title, Text, Paragraph } = Typography;
@@ -73,7 +70,27 @@ interface ViewPreferences {
   showContacts: boolean;
 }
 
+interface RequirementData {
+  city: string;
+  address: string;
+  price: number;
+  area: number;
+  rooms: number;
+  floor: number;
+  floorsTotal: number;
+  propertyType: string;
+  dealType: string;
+  buildingType: string;
+  photos: string[];
+  rating?: number;
+  tags?: string[];
+  phone?: string;
+  email?: string;
+}
 
+interface ParsedLead extends Lead {
+  requirementData: RequirementData;
+}
 
 const INITIAL_FILTERS: LeadFilters = {
   search: '',
@@ -99,10 +116,11 @@ const INITIAL_VIEW_PREFS: ViewPreferences = {
 };
 
 const STATUS_OPTIONS = [
-  { value: 'all', label: 'Все статусы', color: 'default' },
-  { value: 'LEAD_STATUS_PUBLISHED', label: 'Опубликованные', color: 'green' },
-  { value: 'LEAD_STATUS_NEW', label: 'Новые', color: 'blue' },
-  { value: 'LEAD_STATUS_PURCHASED', label: 'Купленные', color: 'orange' },
+  { value: 'LEAD_STATUS_NEW', label: 'Новый', color: 'blue' },
+  { value: 'LEAD_STATUS_PUBLISHED', label: 'Опубликован', color: 'green' },
+  { value: 'LEAD_STATUS_PURCHASED', label: 'Куплен', color: 'orange' },
+  { value: 'LEAD_STATUS_DELETED', label: 'Удалён', color: 'red' },
+  { value: 'LEAD_STATUS_UNSPECIFIED', label: 'Не указан', color: 'gray' },
 ];
 
 const PROPERTY_TYPES = [
@@ -127,17 +145,27 @@ const SORT_OPTIONS = [
   { value: 'title', label: 'Название' },
 ];
 
+const STATUS_MAP: Record<string, LeadStatus> = {
+  'LEAD_STATUS_NEW': 'LEAD_STATUS_NEW',
+  'LEAD_STATUS_PUBLISHED': 'LEAD_STATUS_PUBLISHED',
+  'LEAD_STATUS_PURCHASED': 'LEAD_STATUS_PURCHASED',
+  'LEAD_STATUS_DELETED': 'LEAD_STATUS_DELETED',
+  'LEAD_STATUS_UNSPECIFIED': 'LEAD_STATUS_UNSPECIFIED',
+};
+
 const LeadsCatalogPage = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [parsedLeads, setParsedLeads] = useState<ParsedLead[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<LeadFilters>(INITIAL_FILTERS);
   const [viewPrefs, setViewPrefs] = useState<ViewPreferences>(INITIAL_VIEW_PREFS);
   const [error, setError] = useState<string | null>(null);
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [selectedLead, setSelectedLead] = useState<ParsedLead | null>(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState('all');
   const initialLoadRef = useRef(true);
+  const navigate = useNavigate();
 
   // Загрузка данных
   useEffect(() => {
@@ -150,7 +178,8 @@ const LeadsCatalogPage = () => {
           status: filters.status === 'all' ? undefined : filters.status,
         });
 
-        setLeads(leadsResponse.leads);
+        setLeads(leadsResponse.leads.map(lead => ({ ...lead, status: STATUS_MAP[lead.status] || 'LEAD_STATUS_UNSPECIFIED' })));
+        setParsedLeads(leadsResponse.leads.map(lead => ({ ...lead, requirementData: getRequirementData(lead), status: STATUS_MAP[lead.status] || 'LEAD_STATUS_UNSPECIFIED' })));
         // setStats(statsResponse); // TODO: Implement when API is ready
 
         // Загрузка избранного из localStorage
@@ -172,17 +201,10 @@ const LeadsCatalogPage = () => {
 
   // Оптимизированная фильтрация с debounce
   const filteredLeads = useMemo(() => {
-    if (!leads.length) return [];
+    if (!parsedLeads.length) return [];
 
-    const result = leads.filter((lead) => {
-      let requirementData;
-      try {
-        const decoded = decodeURIComponent(escape(atob(lead.requirement)));
-        requirementData = JSON.parse(decoded);
-      } catch (error) {
-        console.error('Failed to decode requirement:', error);
-        return false;
-      }
+    const result = parsedLeads.filter((lead) => {
+      const requirementData = lead.requirementData;
 
       // Поиск
       if (filters.search) {
@@ -218,10 +240,8 @@ const LeadsCatalogPage = () => {
       let aValue: string | number, bValue: string | number;
 
       if (filters.sortBy === 'price' || filters.sortBy === 'area' || filters.sortBy === 'rooms') {
-        const aDecoded = decodeURIComponent(escape(atob(a.requirement)));
-        const bDecoded = decodeURIComponent(escape(atob(b.requirement)));
-        const aReq = JSON.parse(aDecoded);
-        const bReq = JSON.parse(bDecoded);
+        const aReq = a.requirementData;
+        const bReq = b.requirementData;
         aValue = aReq[filters.sortBy];
         bValue = bReq[filters.sortBy];
       } else {
@@ -237,7 +257,7 @@ const LeadsCatalogPage = () => {
     });
 
     return result;
-  }, [leads, filters]);
+  }, [parsedLeads, filters]);
 
 
   const handleSearch = (search: string) => {
@@ -296,21 +316,68 @@ const LeadsCatalogPage = () => {
   const getRequirementData = (lead: Lead) => {
     try {
       const decoded = decodeURIComponent(escape(atob(lead.requirement)));
-      return JSON.parse(decoded);
+      const data = JSON.parse(decoded);
+
+      // Маппинг полей для совместимости с разными форматами requirement
+      return {
+        city: data.city || data.district || '',
+        address: data.address || '',
+        price: data.price || data.preferredPrice || 0,
+        area: data.area || 0,
+        rooms: data.rooms || data.roomNumber || 0,
+        floor: data.floor || 0,
+        floorsTotal: data.floorsTotal || 0,
+        propertyType: data.propertyType || 'flat',
+        dealType: data.dealType || 'sale',
+        buildingType: data.buildingType || 'secondary',
+        photos: data.photos || [],
+        rating: data.rating,
+        tags: data.tags,
+        phone: data.phone,
+        email: data.email,
+      };
     } catch (error) {
       console.error('Failed to decode requirement:', error);
-      return {};
+      return {
+        city: '',
+        address: '',
+        price: 0,
+        area: 0,
+        rooms: 0,
+        floor: 0,
+        floorsTotal: 0,
+        propertyType: 'flat',
+        dealType: 'sale',
+        buildingType: 'secondary',
+        photos: [],
+        rating: undefined,
+        tags: [],
+        phone: '',
+        email: '',
+      };
     }
   };
 
+  const getPropertyTypeLabel = (value: string) => {
+    return PROPERTY_TYPES.find(pt => pt.value === value)?.label || value;
+  };
+
+  const getDealTypeLabel = (value: string) => {
+    return DEAL_TYPES.find(dt => dt.value === value)?.label || value;
+  };
+
+  const getBuildingTypeLabel = (value: string) => {
+    return value === 'new' ? 'Новостройка' : value === 'secondary' ? 'Вторичка' : value;
+  };
+
   // Обработчики
-  const handleLeadClick = (lead: Lead) => {
+  const handleLeadClick = (lead: ParsedLead) => {
     setSelectedLead(lead);
     setDetailModalVisible(true);
   };
 
-  const handleContact = (lead: Lead, method: 'phone' | 'email') => {
-    const requirementData = getRequirementData(lead);
+  const handleContact = (lead: ParsedLead, method: 'phone' | 'email') => {
+    const requirementData = lead.requirementData;
     const contact = method === 'phone' ? requirementData.phone : requirementData.email;
 
     if (method === 'phone' && contact) {
@@ -320,7 +387,7 @@ const LeadsCatalogPage = () => {
     }
   };
 
-  const handleShare = async (lead: Lead) => {
+  const handleShare = async (lead: ParsedLead) => {
     if (navigator.share) {
       try {
         await navigator.share({
@@ -333,17 +400,17 @@ const LeadsCatalogPage = () => {
       }
     } else {
       navigator.clipboard.writeText(window.location.href);
-      // Можно добавить уведомление об успешном копировании
     }
   };
 
   // Рендер карточки лида
-  const renderLeadCard = (lead: Lead) => {
-    const requirementData = getRequirementData(lead);
+  const renderLeadCard = (lead: ParsedLead) => {
+    const requirementData = lead.requirementData;
     const isFav = isFavorite(lead.leadId);
 
     return (
       <Badge.Ribbon
+        key={lead.leadId}
         text={STATUS_OPTIONS.find(s => s.value === lead.status)?.label}
         color={getStatusColor(lead.status)}
       >
@@ -352,7 +419,7 @@ const LeadsCatalogPage = () => {
             {requirementData.photos?.[0] ? (
               <img
                 alt={lead.title}
-                src={`data:image/png;base64,${requirementData.photos[0]}`}
+                src={`data:image/jpeg;base64,${requirementData.photos[0]}`}
                 className={styles.leadImage}
                 onClick={() => handleLeadClick(lead)}
               />
@@ -440,8 +507,8 @@ const LeadsCatalogPage = () => {
   };
 
   // Рендер в виде списка
-  const renderLeadListItem = (lead: Lead) => {
-    const requirementData = getRequirementData(lead);
+  const renderLeadListItem = (lead: ParsedLead) => {
+    const requirementData = lead.requirementData;
     const isFav = isFavorite(lead.leadId);
 
     return (
@@ -464,7 +531,7 @@ const LeadsCatalogPage = () => {
           avatar={
             <div className={styles.listImage}>
               {requirementData.photos?.[0] ? (
-                <img src={`data:image/png;base64,${requirementData.photos[0]}`} alt={lead.title} />
+                <img src={`data:image/jpeg;base64,${requirementData.photos[0]}`} alt={lead.title} />
               ) : (
                 <HomeOutlined style={{ fontSize: 32, color: '#d9d9d9' }} />
               )}
@@ -509,8 +576,8 @@ const LeadsCatalogPage = () => {
         open={detailModalVisible}
         onCancel={() => setDetailModalVisible(false)}
         footer={[
-          <Button key="contact" type="primary" icon={<PhoneOutlined />}>
-            Связаться
+          <Button key="view" type="primary" onClick={() => navigate(`/leads-catalog/${selectedLead.leadId}`)}>
+            Просмотреть
           </Button>,
           <Button key="favorite"
                   icon={<HeartOutlined style={{ color: isFavorite(selectedLead.leadId) ? '#ff4d4f' : undefined }} />}
@@ -522,7 +589,64 @@ const LeadsCatalogPage = () => {
         width={800}
       >
         <div className={styles.detailContent}>
-          {/* Добавьте контент модального окна */}
+          <Row gutter={24}>
+            <Col span={12}>
+              {selectedLead.requirementData.photos?.[0] ? (
+                <img
+                  src={`data:image/jpeg;base64,${selectedLead.requirementData.photos[0]}`}
+                  alt={selectedLead.title}
+                  style={{ width: '100%', height: 'auto', borderRadius: 8, maxHeight: 400, objectFit: 'cover' }}
+                />
+              ) : (
+                <div style={{ height: 300, background: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8 }}>
+                  <HomeOutlined style={{ fontSize: 64, color: '#d9d9d9' }} />
+                </div>
+              )}
+            </Col>
+            <Col span={12}>
+              <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                <div>
+                  <Title level={4}>Описание</Title>
+                  <Paragraph>{selectedLead.description}</Paragraph>
+                </div>
+
+                <Descriptions title="Характеристики" bordered column={1} size="small">
+                  <Descriptions.Item label="Статус">
+                    <Tag color={getStatusColor(selectedLead.status)}>
+                      {STATUS_OPTIONS.find(s => s.value === selectedLead.status)?.label}
+                    </Tag>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Цена">
+                    {formatPrice(selectedLead.requirementData.price)}
+                    {selectedLead.requirementData.dealType === 'rent' && ' / месяц'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Город">{selectedLead.requirementData.city}</Descriptions.Item>
+                  <Descriptions.Item label="Адрес">{selectedLead.requirementData.address}</Descriptions.Item>
+                  <Descriptions.Item label="Тип объекта">{getPropertyTypeLabel(selectedLead.requirementData.propertyType)}</Descriptions.Item>
+                  <Descriptions.Item label="Тип сделки">{getDealTypeLabel(selectedLead.requirementData.dealType)}</Descriptions.Item>
+                  <Descriptions.Item label="Комнаты">{selectedLead.requirementData.rooms}</Descriptions.Item>
+                  <Descriptions.Item label="Площадь">{selectedLead.requirementData.area} м²</Descriptions.Item>
+                  <Descriptions.Item label="Этаж">{selectedLead.requirementData.floor}/{selectedLead.requirementData.floorsTotal}</Descriptions.Item>
+                  <Descriptions.Item label="Тип дома">{getBuildingTypeLabel(selectedLead.requirementData.buildingType)}</Descriptions.Item>
+                  <Descriptions.Item label="Создан">{formatDate(selectedLead.createdAt)}</Descriptions.Item>
+                  {selectedLead.requirementData.rating && (
+                    <Descriptions.Item label="Рейтинг">
+                      <Rate disabled defaultValue={selectedLead.requirementData.rating} />
+                    </Descriptions.Item>
+                  )}
+                </Descriptions>
+
+                <div>
+                  <Title level={4}>Контактная информация</Title>
+                  <Space direction="vertical">
+                    <Text><UserOutlined /> {selectedLead.contactName}</Text>
+                    <Text><PhoneOutlined /> {selectedLead.contactPhone}</Text>
+                    <Text><MailOutlined /> {selectedLead.contactEmail}</Text>
+                  </Space>
+                </div>
+              </Space>
+            </Col>
+          </Row>
         </div>
       </Modal>
     );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Form, Input, Button, Checkbox, message } from 'antd';
 import { UserOutlined, LockOutlined, PhoneOutlined, HomeOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +16,14 @@ const AuthPage: React.FC = () => {
   const [registerForm] = Form.useForm();
   const [loginCheckboxError, setLoginCheckboxError] = useState(false);
   const [registerCheckboxError, setRegisterCheckboxError] = useState(false);
+
+  // Проверяем, есть ли токен при загрузке страницы
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      navigate('/dashboard');
+    }
+  }, [navigate]);
 
   // Функция для декодирования JWT токена
   const decodeJWT = (token: string) => {
@@ -103,10 +111,7 @@ const AuthPage: React.FC = () => {
       message.success(`Добро пожаловать, ${values.email}!`);
       console.log('Успешная авторизация. Token:', response.token, 'UserId:', userId);
 
-      // Редирект на страницу дашборда
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 500);
+      navigate('/dashboard');
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
       const errorMessage = axiosError.response?.data?.message || 'Ошибка авторизации';
