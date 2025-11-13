@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowDownOutlined, ArrowUpOutlined, MinusOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Card, Space, Typography } from 'antd';
+import { Button, Card, Empty, Space, Spin, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import styles from './styles.module.css';
+import { type DealStatusStats, statsAPI, type DashboardMetrics } from '../../api/stats.ts';
+import type { DealStats } from '../../api/stats';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -25,11 +27,6 @@ interface Metric {
   value: string;
   trendLabel: string;
   trendType: TrendType;
-}
-
-interface ChartCard {
-  id: string;
-  title: string;
 }
 
 interface RangeFilter {
@@ -75,30 +72,211 @@ const RECOMMENDATIONS: Recommendation[] = [
   },
 ];
 
-const METRICS: Metric[] = [
-  { id: 'objects', label: 'Мои объекты', value: '42', trendLabel: '+2', trendType: 'up' },
-  { id: 'new-leads', label: 'Новые лиды', value: '125', trendLabel: '+15%', trendType: 'up' },
-  { id: 'conversion', label: 'Конверсия', value: '8.7%', trendLabel: '-1.2%', trendType: 'down' },
-  { id: 'freshness', label: 'Свежесть лидов', value: '3 дня', trendLabel: '-1', trendType: 'neutral' },
-];
-
-const CHART_CARDS: ChartCard[] = [
-  { id: 'leads-by-day', title: 'Лиды по дням' },
-  { id: 'property-types', title: 'Типы объектов' },
-  { id: 'credits-spending', title: 'Расход кредитов' },
-];
-
 const DashboardPage = () => {
   const navigate = useNavigate();
   const [metricsRange, setMetricsRange] = useState<MetricsRange>('30');
+  const [dealsStats, setDealsStats] = useState<DealStats[]>([]);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [dealStatusStats, setDealStatusStats] = useState<DealStatusStats[]>([]);
+  const [dashboardMetrics, setDashboardMetrics] = useState<DashboardMetrics | null>(null);
+  const [previousMetrics, setPreviousMetrics] = useState<DashboardMetrics | null>(null);
 
   const handleGoToCatalog = () => {
     navigate('/leads-catalog');
   };
 
   const handleRecommendationAction = (id: string) => {
-    // TODO: Реализовать действия для каждой рекомендации
     console.log('Recommendation action:', id);
+  };
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        setStatsLoading(true);
+
+        const days = parseInt(metricsRange);
+        const [dealsData, statusData, metricsData] = await Promise.all([
+          statsAPI.getDealsStats(days),
+          statsAPI.getDealsByStatus(),
+          statsAPI.getDashboardMetrics()
+        ]);
+
+        // Сохраняем предыдущие метрики для расчета трендов
+        setPreviousMetrics(dashboardMetrics);
+        setDashboardMetrics(metricsData);
+        setDealsStats(dealsData);
+        setDealStatusStats(statusData);
+      } catch (error) {
+        console.error('Failed to load stats:', error);
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+
+    loadStats();
+  }, [metricsRange]);
+
+  // Функция для расчета тренда
+  const calculateTrend = (current: number, previous: number | null): { trendType: TrendType; trendLabel: string } => {
+    if (!previous) {
+      return { trendType: 'neutral', trendLabel: '' };
+    }
+
+    const change = ((current - previous) / previous) * 100;
+    const absChange = Math.abs(Math.round(change));
+
+    if (change > 5) {
+      return { trendType: 'up', trendLabel: `+${absChange}%` };
+    } else if (change < -5) {
+      return { trendType: 'down', trendLabel: `-${absChange}%` };
+    } else if (absChange > 0) {
+      return { trendType: 'neutral', trendLabel: `${absChange}%` };
+    } else {
+      return { trendType: 'neutral', trendLabel: '' };
+    }
+  };
+
+  // Форматирование чисел
+  const formatNumber = (num: number): string => {
+    return new Intl.NumberFormat('ru-RU').format(num);
+  };
+
+  const formatPrice = (price: number): string => {
+    if (price >= 1000000) {
+      return `${(price / 1000000).toFixed(1)}M ₽`;
+    }
+    return `${formatNumber(price)} ₽`;
+  };
+
+  // Реальные метрики
+  const REAL_METRICS: Metric[] = dashboardMetrics ? [
+    {
+      id: 'total-leads',
+      label: 'Всего лидов',
+      value: formatNumber(dashboardMetrics.totalLeads),
+      ...calculateTrend(dashboardMetrics.totalLeads, previousMetrics?.totalLeads || null)
+    },
+    {
+      id: 'active-deals',
+      label: 'Активные сделки',
+      value: formatNumber(dashboardMetrics.activeDeals),
+      ...calculateTrend(dashboardMetrics.activeDeals, previousMetrics?.activeDeals || null)
+    },
+    {
+      id: 'conversion',
+      label: 'Конверсия',
+      value: `${dashboardMetrics.conversionRate}%`,
+      ...calculateTrend(dashboardMetrics.conversionRate, previousMetrics?.conversionRate || null)
+    },
+    {
+      id: 'avg-price',
+      label: 'Средняя цена',
+      value: formatPrice(dashboardMetrics.avgDealPrice),
+      ...calculateTrend(dashboardMetrics.avgDealPrice, previousMetrics?.avgDealPrice || null)
+    },
+    {
+      id: 'month-deals',
+      label: 'Сделки за месяц',
+      value: formatNumber(dashboardMetrics.dealsThisMonth),
+      ...calculateTrend(dashboardMetrics.dealsThisMonth, previousMetrics?.dealsThisMonth || null)
+    },
+    {
+      id: 'total-deals',
+      label: 'Всего сделок',
+      value: formatNumber(dashboardMetrics.totalDeals),
+      ...calculateTrend(dashboardMetrics.totalDeals, previousMetrics?.totalDeals || null)
+    }
+  ] : [];
+
+  // Вспомогательная функция для цветов
+  const getColorByIndex = (index: number): string => {
+    const colors = ['#1890ff', '#52c41a', '#faad14', '#f5222d', '#722ed1', '#fa541c'];
+    return colors[index % colors.length];
+  };
+
+  // Компонент для графика "Сделки по дням"
+  const renderLeadsByDayChart = () => {
+    if (statsLoading) {
+      return <Spin size="large" />;
+    }
+
+    if (dealsStats.length === 0) {
+      return <Empty description="Нет данных о сделках" />;
+    }
+
+    const maxCount = Math.max(...dealsStats.map(stat => stat.count));
+
+    return (
+      <div className={styles.chartContainer}>
+        <div className={styles.barChart}>
+          {dealsStats.map((stat, index) => (
+            <div key={index} className={styles.barChartItem}>
+              <div className={styles.barContainer}>
+                <div
+                  className={styles.bar}
+                  style={{
+                    height: maxCount > 0 ? `${(stat.count / maxCount) * 100}%` : '0%'
+                  }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className={styles.barLabels}>
+          {dealsStats.map((stat, index) => (
+            <span key={index} className={styles.barLabelItem}>
+              <Text type="secondary" className={styles.barLabel}>
+                {new Date(stat.date).getDate()}
+              </Text>
+              <Text className={styles.barValue}>{stat.count}</Text>
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // Компонент для графика "Статусы сделок"
+  const renderDealStatusChart = () => {
+    if (statsLoading) {
+      return <Spin size="large" />;
+    }
+
+    if (dealStatusStats.length === 0) {
+      return <Empty description="Нет данных о статусах сделок" />;
+    }
+
+    const maxCount = Math.max(...dealStatusStats.map(stat => stat.count));
+
+    return (
+      <div className={styles.chartContainer}>
+        <div className={styles.barChart}>
+          {dealStatusStats.map((stat, index) => (
+            <div key={stat.status} className={styles.barChartItem}>
+              <div className={styles.barContainer}>
+                <div
+                  className={styles.bar}
+                  style={{
+                    height: maxCount > 0 ? `${(stat.count / maxCount) * 100}%` : '0%',
+                    backgroundColor: getColorByIndex(index)
+                  }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className={styles.barLabels}>
+          {dealStatusStats.map((stat) => (
+            <span key={stat.status} className={styles.barLabelItem}>
+              <Text type="secondary" className={styles.barLabel}>
+                {stat.status}
+              </Text>
+              <Text className={styles.barValue}>{stat.count}</Text>
+            </span>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -178,37 +356,52 @@ const DashboardPage = () => {
             ))}
           </div>
         </div>
-        <div className={styles.metricsGrid}>
-          {METRICS.map((metric) => {
-            const trendConfig = TREND_CONFIG[metric.trendType];
-            return (
-              <div key={metric.id} className={styles.metricCard}>
-                <div className={styles.metricTop}>
-                  <Text type="secondary">{metric.label}</Text>
-                  <span className={`${styles.trend} ${trendConfig.className}`}>
-                    {trendConfig.icon}
-                    {metric.trendLabel}
-                  </span>
+
+        {statsLoading ? (
+          <div style={{ textAlign: 'center', padding: '40px' }}>
+            <Spin size="large" />
+            <div style={{ marginTop: 16 }}>Загрузка метрик...</div>
+          </div>
+        ) : (
+          <div className={styles.metricsGrid}>
+            {REAL_METRICS.map((metric) => {
+              const trendConfig = TREND_CONFIG[metric.trendType];
+              return (
+                <div key={metric.id} className={styles.metricCard}>
+                  <div className={styles.metricTop}>
+                    <Text type="secondary">{metric.label}</Text>
+                    {metric.trendLabel && (
+                      <span className={`${styles.trend} ${trendConfig.className}`}>
+                        {trendConfig.icon}
+                        {metric.trendLabel}
+                      </span>
+                    )}
+                  </div>
+                  <Title level={2} className={styles.metricValue}>
+                    {metric.value}
+                  </Title>
                 </div>
-                <Title level={2} className={styles.metricValue}>
-                  {metric.value}
-                </Title>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* Charts */}
       <section className={styles.chartsGrid} aria-label="Графики и аналитика">
-        {CHART_CARDS.map((chart) => (
-          <div key={chart.id} className={styles.chartCard}>
-            <Title level={4} className={styles.chartTitle}>
-              {chart.title}
-            </Title>
-            <div className={styles.chartPlaceholder}>График появится здесь</div>
-          </div>
-        ))}
+        <div className={styles.chartCard}>
+          <Title level={4} className={styles.chartTitle}>
+            Сделки по дням
+          </Title>
+          {renderLeadsByDayChart()}
+        </div>
+
+        <div className={styles.chartCard}>
+          <Title level={4} className={styles.chartTitle}>
+            Статусы сделок
+          </Title>
+          {renderDealStatusChart()}
+        </div>
       </section>
     </div>
   );
