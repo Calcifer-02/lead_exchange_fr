@@ -187,8 +187,7 @@ const LeadsCatalogPage = () => {
         if (savedFavorites) {
           setFavorites(new Set(JSON.parse(savedFavorites)));
         }
-      } catch (err) {
-        console.error('Failed to load data:', err);
+      } catch {
         setError('Не удалось загрузить данные. Пожалуйста, попробуйте позже.');
       } finally {
         setLoading(false);
@@ -336,8 +335,7 @@ const LeadsCatalogPage = () => {
         phone: data.phone,
         email: data.email,
       };
-    } catch (error) {
-      console.error('Failed to decode requirement:', error);
+    } catch  {
       return {
         city: '',
         address: '',
@@ -395,8 +393,8 @@ const LeadsCatalogPage = () => {
           text: lead.description,
           url: window.location.href,
         });
-      } catch (err) {
-        console.log('Error sharing:', err);
+      } catch {
+        // Ошибка при шаринге
       }
     } else {
       navigator.clipboard.writeText(window.location.href);

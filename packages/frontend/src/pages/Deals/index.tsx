@@ -41,13 +41,9 @@ const DealsPage: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        console.log('🔵 Loading deals...');
         const response = await dealsAPI.fetchDeals();
-        console.log('🟢 Deals loaded:', response);
         setDeals(response);
-      } catch (err) {
-        console.error('🔴 Failed to load deals:', err);
-        setError('Не удалось загрузить сделки');
+      } catch  {
         message.error('Не удалось загрузить список сделок');
       } finally {
         setLoading(false);
@@ -69,17 +65,7 @@ const DealsPage: React.FC = () => {
       deal.buyerUserId === currentUserId
     );
 
-    console.log('🔵 filterMyDeals debug:', {
-      currentUserId,
-      totalDeals: dealsList.length,
-      myDealsCount: myDeals.length,
-      myDeals: myDeals.map(d => ({
-        dealId: d.dealId,
-        seller: d.sellerUserId,
-        buyer: d.buyerUserId,
-        status: d.status
-      }))
-    });
+
 
     return myDeals;
   };
@@ -97,7 +83,6 @@ const DealsPage: React.FC = () => {
 
   const handleUpdateDeal = async (dealId: string, updates: { status?: DealStatus; price?: number }) => {
     try {
-      console.log('🔵 Updating deal:', dealId, updates);
       await dealsAPI.updateDeal(dealId, updates);
       message.success('Сделка обновлена');
 
@@ -108,15 +93,13 @@ const DealsPage: React.FC = () => {
             : deal
         )
       );
-    } catch (err) {
-      console.error('🔴 Failed to update deal:', err);
+    } catch {
       message.error('Не удалось обновить сделку');
     }
   };
 
   const handleAcceptDeal = async (dealId: string) => {
     try {
-      console.log('🔵 Accepting deal:', dealId);
       const updatedDeal = await dealsAPI.acceptDeal(dealId);
       message.success('Сделка принята');
 
@@ -125,8 +108,7 @@ const DealsPage: React.FC = () => {
           deal.dealId === dealId ? updatedDeal : deal
         )
       );
-    } catch (err) {
-      console.error('🔴 Failed to accept deal:', err);
+    } catch {
       message.error('Не удалось принять сделку');
     }
   };
@@ -150,7 +132,6 @@ const DealsPage: React.FC = () => {
         minute: '2-digit',
       });
     } catch {
-      console.error('Invalid date:', dateString);
       return 'Неверная дата';
     }
   };
@@ -269,14 +250,7 @@ const DealsPage: React.FC = () => {
           <div className={styles.loadingText}>Загрузка ваших сделок...</div>
         </div>
       ) : (() => {
-        // ДОБАВЬТЕ ЭТУ ОТЛАДКУ
         const myDeals = filterMyDeals(deals);
-        console.log('🔵 My deals tab debug:', {
-          myDealsCount: myDeals.length,
-          myDeals: myDeals,
-          overallLoading,
-          leadsLoading
-        });
 
         return myDeals.length > 0 ? (
           <List

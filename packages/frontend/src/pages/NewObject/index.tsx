@@ -90,11 +90,8 @@ const NewObjectPage = () => {
       const blobUrl = URL.createObjectURL(file.originFileObj);
 
       try {
-        console.log('Converting file to base64:', file.name, 'Size:', file.size, 'Type:', file.type);
-
         // Конвертируем файл в base64
         const base64 = await fileToBase64(file.originFileObj);
-        console.log('Base64 conversion successful, length:', base64.length);
 
         // Обновляем fileList с blob URL для preview и сохраняем base64 в data
         const updatedFileList = newFileList.map((f) => {
@@ -110,9 +107,8 @@ const NewObjectPage = () => {
         });
 
         setFileList(updatedFileList);
-        message.success(`${file.name} успешно загруж��н`);
-      } catch (error) {
-        console.error('Base64 conversion error:', error);
+        message.success(`${file.name} успешно загружен`);
+      } catch  {
 
         // Очищаем blob URL при ошибке
         URL.revokeObjectURL(blobUrl);
@@ -199,12 +195,9 @@ const NewObjectPage = () => {
         contactEmail: userEmail,
       };
 
-      console.log('Creating lead with data:', leadData);
 
       // Отправляем запрос на создание лида
-      const response = await leadsAPI.createLead(leadData);
-
-      console.log('Lead created successfully:', response.lead.leadId);
+      await leadsAPI.createLead(leadData);
 
       // Определяем статус лида
       const statusMessage = publish
@@ -216,7 +209,6 @@ const NewObjectPage = () => {
       // Перенаправляем обратно на список объектов
       navigate('/my-objects');
     } catch (error) {
-      console.error('Failed to create lead:', error);
 
       if (
         error &&
@@ -370,7 +362,7 @@ const NewObjectPage = () => {
               <Form.Item
                 label="Описание"
                 name="description"
-                rules={[{ required: true, message: 'Добавьте о��исание объекта' }]}
+                rules={[{ required: true, message: 'Добавьте описание объекта' }]}
               >
                 <Input.TextArea rows={5} placeholder="Расскажите об особенностях объекта" />
               </Form.Item>

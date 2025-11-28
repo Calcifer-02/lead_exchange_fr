@@ -24,7 +24,20 @@ const MyObjectsPage = () => {
   const [view, setView] = useState<'list' | 'grid'>('list');
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
+
+  // Мемоизируем отфильтрованные лиды для оптимизации
+  const filteredLeads = useMemo(() => {
+    if (!searchQuery.trim()) return leads;
+
+    const query = searchQuery.toLowerCase();
+    return leads.filter(lead =>
+      lead.title.toLowerCase().includes(query) ||
+      lead.description?.toLowerCase().includes(query) ||
+      lead.contactName.toLowerCase().includes(query)
+    );
+  }, [leads, searchQuery]);
 
   // Загружаем лиды пользователя при монтировании
   useEffect(() => {
@@ -34,7 +47,6 @@ const MyObjectsPage = () => {
         // Получаем userId из localStorage (предполагаем что он там сохранен)
         const userId = localStorage.getItem('userId');
         if (!userId) {
-          console.warn('User ID not found, redirecting to auth');
           navigate('/auth');
           return;
         }
@@ -45,8 +57,7 @@ const MyObjectsPage = () => {
         });
 
         setLeads(response.leads);
-      } catch (error) {
-        console.error('Failed to load leads:', error);
+      } catch  {
         message.error('Не удалось загрузить список объектов');
       } finally {
         setLoading(false);
@@ -137,22 +148,19 @@ const MyObjectsPage = () => {
 
   const handleShowCollections = () => {
     // TODO: Реализовать показ сохраненных подборок
-    console.log('Show collections');
   };
 
   const handleShowViews = () => {
     // TODO: Реализовать показ просмотров
-    console.log('Show views');
   };
 
   const handleShowFilters = () => {
     // TODO: Реализовать показ фильтров
-    console.log('Show filters');
   };
 
-  const handleLeadActions = (lead: Lead) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleLeadActions = (_lead: Lead) => {
     // TODO: Реализовать меню действий с лидом (редактировать, удалить, etc.)
-    console.log('Lead actions for:', lead.title, lead.leadId);
   };
 
   return (
@@ -177,8 +185,10 @@ const MyObjectsPage = () => {
           <Input
             allowClear
             prefix={<SearchOutlined className={styles.searchIcon} />}
-            placeholder="Поиск по адресу или городу..."
+            placeholder="Поиск по названию, контакту или описанию..."
             size="large"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
@@ -211,9 +221,14 @@ const MyObjectsPage = () => {
       <div className={styles.tableCard}>
         <Table<Lead>
           columns={columns}
-          dataSource={leads}
+          dataSource={filteredLeads}
           loading={loading}
-          pagination={false}
+          pagination={{
+            pageSize: 20,
+            showSizeChanger: true,
+            pageSizeOptions: ['10', '20', '50', '100'],
+            showTotal: (total) => `Всего: ${total}`,
+          }}
           rowKey="leadId"
           scroll={{ x: 900 }}
           locale={{

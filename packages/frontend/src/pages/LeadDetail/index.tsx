@@ -101,8 +101,7 @@ const LeadDetailPage: React.FC = () => {
         if (savedFavorites) {
           setFavorites(new Set(JSON.parse(savedFavorites)));
         }
-      } catch (err) {
-        console.error('Failed to fetch lead:', err);
+      } catch  {
         setError('Не удалось загрузить данные лида');
       } finally {
         setLoading(false);
@@ -134,8 +133,7 @@ const LeadDetailPage: React.FC = () => {
         phone: data.phone,
         email: data.email,
       };
-    } catch (error) {
-      console.error('Failed to decode requirement:', error);
+    } catch {
       return {
         city: '',
         address: '',
@@ -236,12 +234,7 @@ const LeadDetailPage: React.FC = () => {
         leadId: lead.leadId,
         price: Number(price)
       };
-
-      console.log('Создание сделки с данными:', dealData);
-
-      // ⚠️ ВОССТАНАВЛИВАЕМ РЕАЛЬНЫЙ ВЫЗОВ API
-      const newDeal = await dealsAPI.createDeal(dealData);
-      console.log('Создана сделка:', newDeal);
+      await dealsAPI.createDeal(dealData);
 
       message.success('Сделка успешно создана');
       setModalVisible(false);
@@ -249,7 +242,6 @@ const LeadDetailPage: React.FC = () => {
       // Переходим на страницу сделок
       navigate('/deals');
     } catch (error: unknown) {
-      console.error('Ошибка при создании сделки:', error);
 
       // Type guard для AxiosError
       const isAxiosError = (err: unknown): err is {

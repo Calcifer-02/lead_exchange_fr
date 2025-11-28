@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Avatar, Badge, Button, Input, Space, Tooltip, List, Tag, Spin, Empty } from 'antd';
 import { BellOutlined, MessageOutlined, MenuOutlined, SearchOutlined, HomeOutlined } from '@ant-design/icons';
 import { useMLMatching } from '../../../hooks/useMLMatching';
-import type { Requirements, Property } from '../../../types/ml';
+import type { Requirements } from '../../../types/ml';
 import styles from './styles.module.css';
 
 interface AppHeaderProps {
@@ -74,12 +74,11 @@ const AppHeader = ({ onToggleSidebar, showMenuTrigger = false }: AppHeaderProps)
     }
 
     // Поиск по площади
-    const areaMatch = query.match(/(\d+)\s*[мм²]/);
+    const areaMatch = query.match(/(\d+)\s*[м²]/);
     if (areaMatch) {
       requirements.min_area = parseInt(areaMatch[1]);
     }
 
-    console.log('🔍 Parsed requirements:', requirements);
     return requirements;
   };
   // Обработчик очистки поиска
@@ -103,8 +102,7 @@ const AppHeader = ({ onToggleSidebar, showMenuTrigger = false }: AppHeaderProps)
   }, []);
 
   // Обработчик выбора результата
-  const handleResultSelect = (property: Property) => {
-    console.log('Selected property:', property);
+  const handleResultSelect = () => {
     setShowResults(false);
     setSearchValue('');
     // Здесь можно добавить навигацию к объекту
@@ -159,7 +157,7 @@ const AppHeader = ({ onToggleSidebar, showMenuTrigger = false }: AppHeaderProps)
                 renderItem={(property, index) => (
                   <List.Item
                     className={styles.resultItem}
-                    onClick={() => handleResultSelect(property)}
+                    onClick={() => handleResultSelect()}
                   >
                     <List.Item.Meta
                       avatar={

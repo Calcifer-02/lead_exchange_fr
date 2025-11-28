@@ -74,7 +74,7 @@ const RECOMMENDATIONS: Recommendation[] = [
 
 const DashboardPage = () => {
   const navigate = useNavigate();
-  const [metricsRange, setMetricsRange] = useState<MetricsRange>('30');
+  const [metricsRange, setMetricsRange] = useState<MetricsRange>('7');
   const [dealsStats, setDealsStats] = useState<DealStats[]>([]);
   const [statsLoading, setStatsLoading] = useState(true);
   const [dealStatusStats, setDealStatusStats] = useState<DealStatusStats[]>([]);

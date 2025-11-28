@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { getAuthConfig } from './auth';
 
-const API_BASE_URL = 'http://localhost:8081/v1';
+const API_BASE_URL = 'https://lead-exchange.onrender.com/v1';
 
 interface Deal {
   price: number;
@@ -82,8 +82,7 @@ export const statsAPI = {
       });
 
       return Object.values(stats);
-    } catch (error) {
-      console.error('Failed to fetch deals stats:', error);
+    } catch {
       return [];
     }
   },
@@ -116,8 +115,7 @@ export const statsAPI = {
         count: count as number,
         percentage: total > 0 ? Math.round(((count as number) / total) * 100) : 0
       }));
-    } catch (error) {
-      console.error('Failed to fetch leads stats:', error);
+    } catch {
       return [];
     }
   },
@@ -141,9 +139,7 @@ export const statsAPI = {
         status: getDealStatusLabel(status),
         count: count as number,
         percentage: total > 0 ? Math.round(((count as number) / total) * 100) : 0
-      }));
-    } catch (error) {
-      console.error('Failed to fetch deals status stats:', error);
+      }));} catch {
       return [];
     }
   },
@@ -192,8 +188,7 @@ export const statsAPI = {
         avgDealPrice,
         dealsThisMonth: dealsThisMonth.length
       };
-    } catch (error) {
-      console.error('Failed to fetch dashboard metrics:', error);
+    } catch {
       return {
         totalLeads: 0,
         totalDeals: 0,

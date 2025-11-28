@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://lead-exchange.onrender.com';
 
 export interface LoginRequest {
   email: string;
@@ -29,36 +29,21 @@ const apiClient = axios.create({
   },
 });
 
-// Interceptor для логирования ошибок и обработки истекшего токена
+// Interceptor для обработки истекшего токена
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response) {
-      console.error('API Error:', {
-        status: error.response.status,
-        statusText: error.response.statusText,
-        data: error.response.data,
-        headers: error.response.headers,
-        url: error.config.url,
-        method: error.config.method,
-        requestData: error.config.data,
-      });
-
       // Проверяем на истекший токен
       const errorData = error.response.data as { code?: number; message?: string };
       if (
         error.response.status === 500 &&
         errorData?.message?.includes('token is expired')
       ) {
-        console.warn('Token expired, redirecting to /auth');
         localStorage.removeItem('token');
         localStorage.removeItem('userEmail');
         window.location.href = '/auth';
       }
-    } else if (error.request) {
-      console.error('Network Error:', error.request);
-    } else {
-      console.error('Error:', error.message);
     }
     return Promise.reject(error);
   }
@@ -127,7 +112,6 @@ export const getAuthConfig = () => {
   }
 
   // Для разработки - используем тестовый токен если нет реального
-  console.warn('⚠️ No auth token found, using test token for development');
   return {
     headers: {
       'Authorization': 'Bearer test',

@@ -20,35 +20,42 @@ export const useLeads = (leadIds: string[]) => {
 
         const leadsMap: Record<string, Lead> = {};
 
-        // Получаем каждый лид по отдельности
-        for (const leadId of leadIds) {
+        // Загружаем все лиды параллельно для ускорения
+        const leadsPromises = leadIds.map(async (leadId) => {
           try {
             const response = await leadsAPI.getLead(leadId);
-            leadsMap[leadId] = response.lead; // Извлекаем lead из response
-          } catch (err) {
-            console.error(`Failed to fetch lead ${leadId}:`, err);
+            return { leadId, lead: response.lead };
+          } catch {
             // Создаем заглушку для лида, который не удалось загрузить
-            const fallbackLead: Lead = {
+            return {
               leadId,
-              title: 'Не удалось загрузить',
-              description: '',
-              requirement: '',
-              status: 'LEAD_STATUS_UNSPECIFIED',
-              contactName: '',
-              contactPhone: '',
-              contactEmail: '',
-              ownerUserId: '',
-              createdUserId: '',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
+              lead: {
+                leadId,
+                title: 'Не удалось загрузить',
+                description: '',
+                requirement: '',
+                status: 'LEAD_STATUS_UNSPECIFIED' as const,
+                contactName: '',
+                contactPhone: '',
+                contactEmail: '',
+                ownerUserId: '',
+                createdUserId: '',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              }
             };
-            leadsMap[leadId] = fallbackLead;
           }
-        }
+        });
+
+        const leadsResults = await Promise.all(leadsPromises);
+
+        // Заполняем map результатами
+        leadsResults.forEach(({ leadId, lead }) => {
+          leadsMap[leadId] = lead;
+        });
 
         setLeads(leadsMap);
-      } catch (err) {
-        console.error('Failed to fetch leads:', err);
+      } catch {
         setError('Не удалось загрузить данные лидов');
       } finally {
         setLoading(false);
