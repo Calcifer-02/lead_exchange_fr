@@ -1,7 +1,4 @@
-import axios from 'axios';
-import { getAuthConfig } from './auth';
-
-const API_BASE_URL = 'https://lead-exchange.onrender.com/v1';
+import { apiClient } from './apiClient';
 
 interface Deal {
   price: number;
@@ -46,15 +43,11 @@ export interface DashboardMetrics {
   dealsThisMonth: number;
 }
 
-
-
 export const statsAPI = {
   // Статистика сделок по дням
   getDealsStats: async (days: number = 30): Promise<DealStats[]> => {
     try {
-      const config = getAuthConfig();
-      // Если бэкенд не поддерживает эту статистику, можем считать на фронтенде
-      const response = await axios.get(`${API_BASE_URL}/deals`, config);
+      const response = await apiClient.get('/v1/deals');
       const deals = response.data.deals || [];
 
       // Группируем сделки по дням
@@ -90,8 +83,7 @@ export const statsAPI = {
   // Статистика по типам недвижимости
   getLeadsByPropertyType: async (): Promise<LeadStats[]> => {
     try {
-      const config = getAuthConfig();
-      const response = await axios.get(`${API_BASE_URL}/leads`, config);
+      const response = await apiClient.get('/v1/leads');
       const leads = response.data.leads || [];
 
       // Анализируем requirement для определения типа недвижимости
@@ -122,8 +114,7 @@ export const statsAPI = {
 
   getDealsByStatus: async (): Promise<DealStatusStats[]> => {
     try {
-      const config = getAuthConfig();
-      const response = await axios.get(`${API_BASE_URL}/deals`, config);
+      const response = await apiClient.get('/v1/deals');
       const deals = response.data.deals || [];
 
       const statusCounts: Record<string, number> = {};
@@ -139,17 +130,17 @@ export const statsAPI = {
         status: getDealStatusLabel(status),
         count: count as number,
         percentage: total > 0 ? Math.round(((count as number) / total) * 100) : 0
-      }));} catch {
+      }));
+    } catch {
       return [];
     }
   },
 
   getDashboardMetrics: async (): Promise<DashboardMetrics> => {
     try {
-      const config = getAuthConfig();
       const [leadsResponse, dealsResponse] = await Promise.all([
-        axios.get(`${API_BASE_URL}/leads`, config),
-        axios.get(`${API_BASE_URL}/deals`, config)
+        apiClient.get('/v1/leads'),
+        apiClient.get('/v1/deals')
       ]);
 
       const leads: Lead[] = leadsResponse.data.leads || [];
@@ -199,8 +190,8 @@ export const statsAPI = {
       };
     }
   }
-
 };
+
 const getDealStatusLabel = (status: string): string => {
   const labels: Record<string, string> = {
     'DEAL_STATUS_PENDING': 'Ожидает',

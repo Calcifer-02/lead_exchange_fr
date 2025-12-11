@@ -1,44 +1,5 @@
-import axios from 'axios';
+import { apiClient } from './apiClient';
 import type { UploadFileRequest, UploadFileResponse, UploadFilesRequest, UploadFilesResponse } from '../types/file';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://lead-exchange.onrender.com';
-
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Interceptor для добавления токена авторизации
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Interceptor для обработки истекшего токена
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response) {
-      // Проверяем на истекший токен
-      const errorData = error.response.data as { code?: number; message?: string };
-      if (
-        error.response.status === 500 &&
-        errorData?.message?.includes('token is expired')
-      ) {
-        // Очищаем токен и перенаправляем на страницу логина
-        localStorage.removeItem('token');
-        localStorage.removeItem('userEmail');
-        window.location.href = '/auth';
-      }
-    }
-    return Promise.reject(error);
-  }
-);
 
 /**
  * Преобразует MIME type в формат ожидаемый бэкендом
@@ -49,11 +10,8 @@ apiClient.interceptors.response.use(
 const normalizeMimeType = (mimeType: string): string => {
   const match = mimeType.match(/image\/(jpeg|jpg|png|webp|gif)/i);
   if (match) {
-    const type = match[1].toLowerCase();
-    // jpg -> jpeg для единообразия
-    return type === 'jpg' ? 'jpeg' : type;
+    return match[1].toLowerCase() === 'jpg' ? 'jpeg' : match[1].toLowerCase();
   }
-  // По умолчанию возвращаем как есть (будет ошибка валидации на бэке)
   return mimeType;
 };
 
@@ -134,4 +92,3 @@ export const fileAPI = {
     });
   },
 };
-

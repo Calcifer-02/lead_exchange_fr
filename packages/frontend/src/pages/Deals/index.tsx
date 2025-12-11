@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Tabs, Empty, List, Button, Tag, Space, Spin, Alert, message } from 'antd';
+import { Card, Tabs, Empty, List, Button, Tag, Space, Spin, Alert, message, Typography } from 'antd';
+import { useNavigate } from 'react-router-dom';
+import { DollarOutlined } from '@ant-design/icons';
 import { dealsAPI } from '../../api';
 import { useLeads } from '../../hooks/useLeads';
 import type { Deal, DealStatus } from '../../types';
 import styles from './styles.module.css';
+
+const { Text } = Typography;
 
 const STATUS_LABELS: Record<DealStatus, string> = {
   DEAL_STATUS_UNSPECIFIED: 'Не задан',
@@ -24,6 +28,7 @@ const STATUS_COLORS: Record<DealStatus, string> = {
 };
 
 const DealsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -143,6 +148,7 @@ const DealsPage: React.FC = () => {
     return (
       <List.Item
         key={deal.dealId}
+        className={styles.dealItem}
         actions={[
           // Кнопки для ПОКУПАТЕЛЯ (только если пользователь не продавец и есть права)
           !isSeller && deal.status === 'DEAL_STATUS_PENDING' && !deal.buyerUserId && (
@@ -185,9 +191,20 @@ const DealsPage: React.FC = () => {
         ].filter(Boolean)}
       >
         <List.Item.Meta
+          avatar={
+            <div className={styles.dealPrice}>
+              <DollarOutlined style={{ fontSize: 24, color: '#1f71ff' }} />
+              <div className={styles.priceValue}>{formatPrice(deal.price)}</div>
+            </div>
+          }
           title={
             <Space>
-              <span>Сделка #{deal.dealId.slice(0, 8)}...</span>
+              <span
+                className={styles.dealTitleLink}
+                onClick={() => navigate(`/leads-catalog/${deal.leadId}`)}
+              >
+                {getLeadTitle(deal.leadId)}
+              </span>
               <Tag color={STATUS_COLORS[deal.status]}>
                 {STATUS_LABELS[deal.status]}
               </Tag>
@@ -198,7 +215,7 @@ const DealsPage: React.FC = () => {
                     isSeller ? 'blue' :
                       isBuyer ? 'green' : 'default'
                   }
-                  style={{ fontSize: '12px' }}
+                  style={{ fontSize: '11px' }}
                 >
                   {isSeller ? 'Вы продавец' :
                     isBuyer ? 'Вы покупатель' : 'Наблюдатель'}
@@ -208,22 +225,22 @@ const DealsPage: React.FC = () => {
           }
           description={
             <Space direction="vertical" size={4}>
-              <div><strong>Лид:</strong> {getLeadTitle(deal.leadId)}</div>
-              <div><strong>Цена:</strong> {formatPrice(deal.price)}</div>
               <div>
-                <strong>Продавец:</strong> {getUserInfo(deal.sellerUserId)}
-                {isSeller && <Tag color="blue" style={{ marginLeft: 8, fontSize: '12px' }}>Вы</Tag>}
+                <Text type="secondary">Продавец: </Text>
+                <Text>{getUserInfo(deal.sellerUserId)}</Text>
+                {isSeller && <Tag color="blue" style={{ marginLeft: 8, fontSize: '10px' }}>Вы</Tag>}
               </div>
               {deal.buyerUserId && (
                 <div>
-                  <strong>Покупатель:</strong> {getUserInfo(deal.buyerUserId)}
-                  {isBuyer && <Tag color="green" style={{ marginLeft: 8, fontSize: '12px' }}>Вы</Tag>}
+                  <Text type="secondary">Покупатель: </Text>
+                  <Text>{getUserInfo(deal.buyerUserId)}</Text>
+                  {isBuyer && <Tag color="green" style={{ marginLeft: 8, fontSize: '10px' }}>Вы</Tag>}
                 </div>
               )}
-              <div><strong>Создано:</strong> {formatDate(deal.createdAt)}</div>
-              {deal.updatedAt !== deal.createdAt && (
-                <div><strong>Обновлено:</strong> {formatDate(deal.updatedAt)}</div>
-              )}
+              <div>
+                <Text type="secondary">Создано: </Text>
+                <Text>{formatDate(deal.createdAt)}</Text>
+              </div>
             </Space>
           }
         />

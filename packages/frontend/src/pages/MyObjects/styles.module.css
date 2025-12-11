@@ -153,6 +153,19 @@
     background: rgba(31, 113, 255, 0.04);
 }
 
+.tableRow {
+    transition: all 0.2s ease;
+}
+
+.tableRow:hover {
+    background: rgba(31, 113, 255, 0.06) !important;
+    box-shadow: 0 2px 8px rgba(31, 113, 255, 0.08);
+}
+
+.tableRow:active {
+    background: rgba(31, 113, 255, 0.1) !important;
+}
+
 .statusTag {
     border-radius: 6px;
     padding: 4px 12px;

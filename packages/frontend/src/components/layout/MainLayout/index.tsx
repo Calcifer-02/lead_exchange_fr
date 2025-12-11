@@ -1,20 +1,11 @@
-import { useState, useEffect } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Outlet } from 'react-router-dom';
 import AppHeader from '../AppHeader';
 import AppSidebar from '../AppSidebar';
 import styles from './styles.module.css';
 
 const MainLayout = () => {
-  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  useEffect(() => {
-    // Проверяем авторизацию
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/auth');
-    }
-  }, [navigate]);
 
   const handleToggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -46,4 +37,3 @@ const MainLayout = () => {
 };
 
 export default MainLayout;
-

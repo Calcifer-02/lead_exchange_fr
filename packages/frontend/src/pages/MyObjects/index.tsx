@@ -8,8 +8,9 @@ import {
   PlusOutlined,
   SearchOutlined,
   TableOutlined,
+  UserAddOutlined,
 } from '@ant-design/icons';
-import { Button, Input, Segmented, Table, Tag, Tooltip, Typography, message } from 'antd';
+import { Button, Input, Segmented, Space, Table, Tag, Tooltip, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useNavigate } from 'react-router-dom';
 import { leadsAPI } from '../../api';
@@ -44,10 +45,11 @@ const MyObjectsPage = () => {
     const loadLeads = async () => {
       try {
         setLoading(true);
-        // Получаем userId из localStorage (предполагаем что он там сохранен)
+        // Получаем userId из localStorage
         const userId = localStorage.getItem('userId');
         if (!userId) {
-          navigate('/auth');
+          message.error('Не удалось определить ID пользователя. Попробуйте выйти и войти снова.');
+          setLoading(false);
           return;
         }
 
@@ -65,7 +67,7 @@ const MyObjectsPage = () => {
     };
 
     loadLeads();
-  }, [navigate]);
+  }, []);
 
   const columns = useMemo<ColumnsType<Lead>>(
     () => [
@@ -158,6 +160,11 @@ const MyObjectsPage = () => {
     // TODO: Реализовать показ фильтров
   };
 
+  const handleLeadClick = (lead: Lead) => {
+    // Переходим на детальную страницу лида
+    navigate(`/leads-catalog/${lead.leadId}`);
+  };
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleLeadActions = (_lead: Lead) => {
     // TODO: Реализовать меню действий с лидом (редактировать, удалить, etc.)
@@ -169,15 +176,25 @@ const MyObjectsPage = () => {
         <Title level={2} className={styles.pageTitle}>
           Мои объекты ({leads.length})
         </Title>
-        <Button
-          type="primary"
-          size="large"
-          icon={<PlusOutlined />}
-          className={styles.pageHeaderAction}
-          onClick={handleCreateNew}
-        >
-          Создать новый объект
-        </Button>
+        <Space>
+          <Button
+            size="large"
+            icon={<UserAddOutlined />}
+            className={styles.pageHeaderAction}
+            onClick={() => navigate('/leads/new')}
+          >
+            Создать лид
+          </Button>
+          <Button
+            type="primary"
+            size="large"
+            icon={<PlusOutlined />}
+            className={styles.pageHeaderAction}
+            onClick={handleCreateNew}
+          >
+            Создать объект
+          </Button>
+        </Space>
       </header>
 
       <div className={styles.filtersBar}>
@@ -234,6 +251,11 @@ const MyObjectsPage = () => {
           locale={{
             emptyText: loading ? 'Загрузка...' : 'У вас пока нет объектов',
           }}
+          onRow={(record) => ({
+            onClick: () => handleLeadClick(record),
+            style: { cursor: 'pointer' },
+          })}
+          rowClassName={styles.tableRow}
         />
       </div>
     </div>

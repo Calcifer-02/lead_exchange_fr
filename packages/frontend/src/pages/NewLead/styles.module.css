@@ -1,0 +1,421 @@
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding-bottom: 48px;
+}
+
+.pageHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.backButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #6b778c;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.backButton:hover {
+    color: #1f71ff;
+}
+
+.content {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+    gap: 24px;
+}
+
+@media (max-width: 900px) {
+    .content {
+        grid-template-columns: 1fr;
+    }
+
+    .previewCard {
+        order: -1;
+    }
+}
+
+.card {
+    background: #fff;
+    border: 1px solid #dfe1e6;
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(12, 18, 29, 0.06);
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.sectionTitle {
+    margin: 0;
+    color: #172b4d;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sectionIcon {
+    color: #1f71ff;
+    font-size: 18px;
+}
+
+.borderedGroup {
+    border-top: 1px solid #dfe1e6;
+    padding-top: 24px;
+}
+
+.fieldRow {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.fullWidth {
+    width: 100%;
+}
+
+/* Preview Card */
+.previewCard {
+    position: sticky;
+    top: 88px;
+}
+
+.previewHeader {
+    background: linear-gradient(135deg, #1f71ff 0%, #0052cc 100%);
+    border-radius: 12px 12px 0 0;
+    padding: 24px;
+    color: #fff;
+}
+
+.previewHeaderTitle {
+    margin: 0 !important;
+    color: #fff !important;
+    font-size: 18px;
+}
+
+.previewHeaderSubtitle {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 14px;
+    margin-top: 4px;
+}
+
+.previewBody {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.previewSection {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.previewLabel {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b778c;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.previewValue {
+    font-size: 14px;
+    color: #172b4d;
+    line-height: 1.5;
+}
+
+.previewPrice {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1f71ff;
+}
+
+.previewTags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.previewTag {
+    background: rgba(31, 113, 255, 0.1);
+    border-radius: 999px;
+    color: #1f71ff;
+    font-weight: 500;
+    padding: 4px 12px;
+    font-size: 12px;
+}
+
+.previewStats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    padding: 16px 0;
+    border-top: 1px solid #e5e7eb;
+}
+
+.previewStat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.previewStatLabel {
+    font-size: 12px;
+    color: #6b778c;
+}
+
+.previewStatValue {
+    font-size: 14px;
+    font-weight: 600;
+    color: #172b4d;
+}
+
+.previewContact {
+    padding: 16px;
+    background: #f5f6f8;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.previewContactItem {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #172b4d;
+}
+
+.previewContactIcon {
+    color: #6b778c;
+    font-size: 14px;
+}
+
+/* Tag Toggle */
+.tagGroup {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.tagToggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    padding: 8px 16px;
+    background: #f3f4f6;
+    color: #172b4d;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.tagToggleActive {
+    background: rgba(31, 113, 255, 0.15);
+    color: #1f71ff;
+    border-color: rgba(31, 113, 255, 0.3);
+}
+
+.tagToggle:hover {
+    background: rgba(31, 113, 255, 0.1);
+    color: #1f71ff;
+}
+
+/* Radio Group */
+.radioGroup {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.radioOption {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    color: #172b4d;
+    transition: color 0.2s ease;
+    padding: 8px 16px;
+    border-radius: 8px;
+    background: #f5f6f8;
+}
+
+.radioOption:hover {
+    background: #e5e7eb;
+}
+
+.radioOptionActive {
+    background: rgba(31, 113, 255, 0.1);
+    color: #1f71ff;
+}
+
+.radioBullet {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid #d1d5db;
+    display: grid;
+    place-items: center;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.radioBulletActive {
+    border-color: #1f71ff;
+    background: #1f71ff;
+}
+
+.radioBulletInner {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #fff;
+}
+
+/* Footer */
+.footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding-top: 24px;
+    border-top: 1px solid #dfe1e6;
+}
+
+.secondaryButton {
+    background: #e5e7eb !important;
+    border-color: #e5e7eb !important;
+    color: #172b4d !important;
+    font-weight: 600;
+}
+
+.secondaryButton:hover,
+.secondaryButton:focus {
+    background: #d7dbe3 !important;
+    border-color: #d7dbe3 !important;
+}
+
+.primaryButton {
+    font-weight: 600;
+}
+
+/* Feature Checkboxes */
+.featuresGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+.featureCheckbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: #f5f6f8;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.featureCheckbox:hover {
+    background: #e5e7eb;
+}
+
+.featureCheckboxActive {
+    background: rgba(31, 113, 255, 0.1);
+    border-color: rgba(31, 113, 255, 0.3);
+}
+
+.featureIcon {
+    font-size: 18px;
+    color: #6b778c;
+}
+
+.featureIconActive {
+    color: #1f71ff;
+}
+
+.featureLabel {
+    font-size: 14px;
+    color: #172b4d;
+}
+
+/* Empty Preview State */
+.previewEmpty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    text-align: center;
+    color: #6b778c;
+}
+
+.previewEmptyIcon {
+    font-size: 48px;
+    opacity: 0.4;
+    margin-bottom: 16px;
+}
+
+.previewEmptyText {
+    font-size: 14px;
+    max-width: 200px;
+}
+
+/* Urgency Tag */
+.urgencyTag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.urgencyTagLow {
+    background: #ecfdf5;
+    color: #059669;
+}
+
+.urgencyTagMedium {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.urgencyTagHigh {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+/* Price Range */
+.priceRange {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.priceRangeSeparator {
+    color: #6b778c;
+    font-weight: 500;
+}
+

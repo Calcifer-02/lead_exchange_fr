@@ -7,6 +7,7 @@ import {
   DatabaseOutlined,
   DollarOutlined,
   FundProjectionScreenOutlined,
+  UserAddOutlined,
 } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styles from './styles.module.css';
@@ -20,6 +21,7 @@ interface SidebarProps {
 const navItems: Array<{ key: string; label: string; icon: React.ReactNode }> = [
   { key: '/dashboard', label: 'Дашборд', icon: <AppstoreFilled /> },
   { key: '/my-objects', label: 'Мои объекты', icon: <DatabaseOutlined /> },
+  { key: '/leads/new', label: 'Создать лид', icon: <UserAddOutlined /> },
   { key: '/leads-catalog', label: 'Каталог лидов', icon: <FundProjectionScreenOutlined /> },
   { key: '/deals', label: 'Сделки', icon: <ContactsOutlined /> },
   { key: '/finance', label: 'Финансы', icon: <DollarOutlined /> },
@@ -52,7 +54,7 @@ const AppSidebarComponent = ({ onNavigate }: SidebarProps) => {
     <div className={styles.sidebar}>
       <Link to="/dashboard" className={styles.brand} onClick={onNavigate}>
         <div className={styles.brandIcon}>
-          <img src="/logo.svg" alt="Lead Exchange" />
+          <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABwAAAAcCAMAAABF0y+mAAAAdVBMVEUAe/sAd/oAb/VypfPe6vkAYs8AdPH////o7PAAVbro8PoDX7/v8fIAb+cAUKNYcZkAWtRnbHV/jKEcW6pVaIh6h5oAZeaBodNhd50AaNwAb/eEr/F4e38ALXUAb+IAHmEAZc4AefbD1e8AUsLJ0NsAT7NKZIyk4XqWAAAAa0lEQVR4AdTMMRZAMBRE0QgSAACQELD/JfL7TKH02ntm2G9zODbuer5AO1fKIATKI4lVxAlpbNc0I80LBrWsIh9s66bFz10v34bRZtNMtiiNbd3MN3OQUXzHxsxxAqPEdSsyoKM2zwZ3igMARnwIErfWw3EAAAAASUVORK5CYII=" alt="Lead Exchange" />
         </div>
         <div className={styles.brandTitle}>
           Lead Exchange

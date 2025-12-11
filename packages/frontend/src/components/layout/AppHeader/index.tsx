@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Avatar, Badge, Button, Input, Space, Tooltip, List, Tag, Spin, Empty } from 'antd';
-import { BellOutlined, MessageOutlined, MenuOutlined, SearchOutlined, HomeOutlined } from '@ant-design/icons';
+import { Avatar, Badge, Button, Input, Space, Tooltip, List, Tag, Spin, Empty, Dropdown } from 'antd';
+import type { MenuProps } from 'antd';
+import { BellOutlined, MessageOutlined, MenuOutlined, SearchOutlined, HomeOutlined, UserOutlined, SettingOutlined, LogoutOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import { useMLMatching } from '../../../hooks/useMLMatching';
 import type { Requirements } from '../../../types/ml';
 import styles from './styles.module.css';
@@ -14,8 +16,48 @@ const AppHeader = ({ onToggleSidebar, showMenuTrigger = false }: AppHeaderProps)
   const [searchValue, setSearchValue] = useState('');
   const [showResults, setShowResults] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   const { matches, loading, findMatches, similarityScores, getSimilarityPercentage } = useMLMatching();
+
+  // Получаем данные пользователя из localStorage
+  const userFirstName = localStorage.getItem('userFirstName') || '';
+  const userLastName = localStorage.getItem('userLastName') || '';
+  const userInitials = `${userFirstName.charAt(0)}${userLastName.charAt(0)}`.toUpperCase() || 'U';
+
+  // Меню профиля
+  const profileMenuItems: MenuProps['items'] = [
+    {
+      key: 'profile',
+      icon: <UserOutlined />,
+      label: 'Профиль',
+      onClick: () => navigate('/profile'),
+    },
+    {
+      key: 'settings',
+      icon: <SettingOutlined />,
+      label: 'Настройки',
+      onClick: () => navigate('/profile'),
+    },
+    {
+      type: 'divider',
+    },
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: 'Выйти',
+      danger: true,
+      onClick: () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('userEmail');
+        localStorage.removeItem('userFirstName');
+        localStorage.removeItem('userLastName');
+        localStorage.removeItem('userPhone');
+        navigate('/auth');
+      },
+    },
+  ];
 
   // Обработчик изменения поискового запроса
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -218,9 +260,11 @@ const AppHeader = ({ onToggleSidebar, showMenuTrigger = false }: AppHeaderProps)
             <Button type="text" shape="circle" icon={<MessageOutlined />} className={styles.iconButton} />
           </Badge>
         </Tooltip>
-        <Avatar size={40} className={styles.avatar}>
-          АП
-        </Avatar>
+        <Dropdown menu={{ items: profileMenuItems }} trigger={['click']} placement="bottomRight">
+          <Avatar size={40} className={styles.avatar} style={{ cursor: 'pointer' }}>
+            {userInitials}
+          </Avatar>
+        </Dropdown>
       </Space>
     </div>
   );

@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { apiClient } from '../apiClient';
 import type {
   CreateLeadRequest,
   UpdateLeadRequest,
@@ -6,45 +6,6 @@ import type {
   ListLeadsResponse,
   LeadResponse,
 } from '../../types';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://lead-exchange.onrender.com';
-
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Authorization': 'Bearer test',
-    'Content-Type': 'application/json',
-  },
-});
-
-// Interceptor для добавления токена авторизации
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Interceptor для обработки истекшего токена
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response) {
-      // Проверяем на истекший токен
-      const errorData = error.response.data as { code?: number; message?: string };
-      if (
-        error.response.status === 500 &&
-        errorData?.message?.includes('token is expired')
-      ) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('userEmail');
-        window.location.href = '/auth';
-      }
-    }
-    return Promise.reject(error);
-  }
-);
 
 /**
  * Преобразует объект фильтра в query параметры

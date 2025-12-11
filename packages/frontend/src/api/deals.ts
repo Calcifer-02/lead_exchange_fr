@@ -1,5 +1,4 @@
-import axios from 'axios';
-import { getAuthConfig } from './auth'; // Импортируем из вашего auth.ts
+import { apiClient } from './apiClient';
 import type {
   Deal,
   CreateDealRequest,
@@ -9,52 +8,65 @@ import type {
   ListDealsResponse
 } from '../types/deals';
 
-const API_BASE_URL = 'https://lead-exchange.onrender.com/v1';
+/**
+ * Преобразует объект фильтра в query параметры согласно Swagger
+ */
+const buildFilterParams = (filter?: ListDealsFilter): Record<string, string | number> => {
+  const params: Record<string, string | number> = {};
 
-const fetchDeals = async (filter: ListDealsFilter = {}): Promise<Deal[]> => {
-  const config = getAuthConfig();
-  const response = await axios.get<ListDealsResponse>(`${API_BASE_URL}/deals`, {
-    params: filter,
-    ...config
-  });
-  return response.data.deals;
+  if (filter?.leadId) {
+    params['filter.leadId'] = filter.leadId;
+  }
+  if (filter?.sellerUserId) {
+    params['filter.sellerUserId'] = filter.sellerUserId;
+  }
+  if (filter?.buyerUserId) {
+    params['filter.buyerUserId'] = filter.buyerUserId;
+  }
+  if (filter?.status) {
+    params['filter.status'] = filter.status;
+  }
+  if (filter?.minPrice !== undefined) {
+    params['filter.minPrice'] = filter.minPrice;
+  }
+  if (filter?.maxPrice !== undefined) {
+    params['filter.maxPrice'] = filter.maxPrice;
+  }
+
+  return params;
+};
+
+const fetchDeals = async (filter?: ListDealsFilter): Promise<Deal[]> => {
+  const params = buildFilterParams(filter);
+  const response = await apiClient.get<ListDealsResponse>('/v1/deals', { params });
+  return response.data.deals || [];
 };
 
 const createDeal = async (dealData: CreateDealRequest): Promise<Deal> => {
-  const config = getAuthConfig();
-  const response = await axios.post<DealResponse>(
-    `${API_BASE_URL}/deals`,
-    dealData,
-    config
+  const response = await apiClient.post<DealResponse>(
+    '/v1/deals',
+    dealData
   );
   return response.data.deal;
 };
 
-// Аналогично обновите остальные методы (getDealById, updateDeal, acceptDeal)
-// добавив const config = getAuthConfig(); и ...config в запрос
-
 const getDealById = async (dealId: string): Promise<Deal> => {
-  const config = getAuthConfig();
-  const response = await axios.get<DealResponse>(`${API_BASE_URL}/deals/${dealId}`, config);
+  const response = await apiClient.get<DealResponse>(`/v1/deals/${dealId}`);
   return response.data.deal;
 };
 
 const updateDeal = async (dealId: string, updateData: UpdateDealRequest): Promise<Deal> => {
-  const config = getAuthConfig();
-  const response = await axios.patch<DealResponse>(
-    `${API_BASE_URL}/deals/${dealId}`,
-    updateData,
-    config
+  const response = await apiClient.patch<DealResponse>(
+    `/v1/deals/${dealId}`,
+    updateData
   );
   return response.data.deal;
 };
 
 const acceptDeal = async (dealId: string): Promise<Deal> => {
-  const config = getAuthConfig();
-  const response = await axios.post<DealResponse>(
-    `${API_BASE_URL}/deals/${dealId}/accept`,
-    {},
-    config
+  const response = await apiClient.post<DealResponse>(
+    `/v1/deals/${dealId}/accept`,
+    {}
   );
   return response.data.deal;
 };
