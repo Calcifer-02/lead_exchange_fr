@@ -10,7 +10,9 @@ import LeadDetailPage from './pages/LeadDetail'
 import DealsPage from './pages/Deals'
 import FinancePage from './pages/Finance'
 import ProfilePage from './pages/Profile'
+import AdminPage from './pages/Admin'
 import ProtectedRoute from './components/ProtectedRoute'
+import AdminRoute from './components/AdminRoute'
 import './App.css'
 
 function App() {
@@ -34,6 +36,7 @@ function App() {
           <Route path="deals" element={<DealsPage />} />
           <Route path="finance" element={<FinancePage />} />
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
         </Route>
 
         <Route path="*" element={<Navigate to="/auth" replace />} />

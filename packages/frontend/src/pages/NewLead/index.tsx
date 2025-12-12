@@ -90,7 +90,7 @@ const NewLeadPage = () => {
 
       await leadsAPI.createLead(leadData);
 
-      message.success('Лид успешно создан! Параметры будут извлечены автоматически.');
+      message.success('Лид успешно создан и отправлен на модерацию!');
       navigate('/my-objects');
     } catch (error) {
       if (error instanceof Error) {
@@ -207,7 +207,10 @@ const NewLeadPage = () => {
                 label="Email"
                 rules={[
                   { required: true, message: 'Введите email' },
-                  { type: 'email', message: 'Некорректный email' },
+                  {
+                    pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                    message: 'Некорректный email'
+                  },
                 ]}
               >
                 <Input

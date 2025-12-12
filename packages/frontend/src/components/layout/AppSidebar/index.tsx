@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState, useEffect } from 'react';
 import { Menu } from 'antd';
 import type { MenuProps } from 'antd';
 import {
@@ -8,8 +8,11 @@ import {
   DollarOutlined,
   FundProjectionScreenOutlined,
   UserAddOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { userAPI } from '../../../api';
+import type { UserRole } from '../../../types/user';
 import styles from './styles.module.css';
 
 type MenuItem = Required<MenuProps>['items'][number];
@@ -18,28 +21,54 @@ interface SidebarProps {
   onNavigate?: () => void;
 }
 
-const navItems: Array<{ key: string; label: string; icon: React.ReactNode }> = [
+interface NavItem {
+  key: string;
+  label: string;
+  icon: React.ReactNode;
+  adminOnly?: boolean;
+}
+
+const navItems: NavItem[] = [
   { key: '/dashboard', label: 'Дашборд', icon: <AppstoreFilled /> },
-  { key: '/my-objects', label: 'Мои объекты', icon: <DatabaseOutlined /> },
+  { key: '/my-objects', label: 'Мои лиды', icon: <DatabaseOutlined /> },
   { key: '/leads/new', label: 'Создать лид', icon: <UserAddOutlined /> },
   { key: '/leads-catalog', label: 'Каталог лидов', icon: <FundProjectionScreenOutlined /> },
   { key: '/deals', label: 'Сделки', icon: <ContactsOutlined /> },
   { key: '/finance', label: 'Финансы', icon: <DollarOutlined /> },
+  { key: '/admin', label: 'Администрирование', icon: <SettingOutlined />, adminOnly: true },
 ];
-
-const mapMenuItems = (): MenuItem[] =>
-  navItems.map((item) => ({
-    key: item.key,
-    icon: item.icon,
-    label: item.label,
-  }));
 
 const AppSidebarComponent = ({ onNavigate }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
+
+  useEffect(() => {
+    const loadUserRole = async () => {
+      try {
+        const profile = await userAPI.getProfile();
+        setUserRole(profile.role);
+      } catch {
+        // Если не удалось загрузить профиль, не показываем админ-меню
+        setUserRole(null);
+      }
+    };
+    loadUserRole();
+  }, []);
+
+  const isAdmin = userRole === 'USER_ROLE_ADMIN';
+
+  const filteredNavItems = navItems.filter(item => !item.adminOnly || isAdmin);
+
+  const mapMenuItems = (): MenuItem[] =>
+    filteredNavItems.map((item) => ({
+      key: item.key,
+      icon: item.icon,
+      label: item.label,
+    }));
 
   const selectedKey =
-    navItems.find(
+    filteredNavItems.find(
       (item) => location.pathname === item.key || location.pathname.startsWith(`${item.key}/`)
     )?.key || '/dashboard';
 

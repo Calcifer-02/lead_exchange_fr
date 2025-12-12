@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Card,
@@ -21,6 +21,8 @@ import {
   List,
   Descriptions,
   message,
+  Pagination,
+  Drawer,
 } from 'antd';
 import {
   SearchOutlined,
@@ -146,8 +148,21 @@ const LeadsCatalogPage = () => {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState('all');
+  const [mobileFiltersVisible, setMobileFiltersVisible] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(12);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 992);
   const initialLoadRef = useRef(true);
   const navigate = useNavigate();
+
+  // Отслеживание размера экрана
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 992);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Загрузка данных
   useEffect(() => {
@@ -156,8 +171,9 @@ const LeadsCatalogPage = () => {
         setLoading(true);
         setError(null);
 
+        // По умолчанию загружаем только опубликованные лиды
         const leadsResponse = await leadsAPI.listLeads({
-          status: filters.status === 'all' ? undefined : filters.status,
+          status: filters.status === 'all' ? 'LEAD_STATUS_PUBLISHED' : filters.status,
         });
 
         const mappedLeads = leadsResponse.leads.map(lead => ({
@@ -165,8 +181,13 @@ const LeadsCatalogPage = () => {
           status: STATUS_MAP[lead.status] || 'LEAD_STATUS_UNSPECIFIED',
         }));
 
-        setLeads(mappedLeads);
-        setParsedLeads(mappedLeads.map(lead => ({
+        // Дополнительная фильтрация: показываем только опубликованные лиды в каталоге
+        const publishedLeads = mappedLeads.filter(lead =>
+          lead.status === 'LEAD_STATUS_PUBLISHED' || lead.status === 'LEAD_STATUS_PURCHASED'
+        );
+
+        setLeads(publishedLeads);
+        setParsedLeads(publishedLeads.map(lead => ({
           ...lead,
           parsedRequirement: parseRequirement(lead.requirement),
         })));
@@ -198,9 +219,8 @@ const LeadsCatalogPage = () => {
       result = result.filter(lead => favorites.has(lead.leadId));
     } else if (activeTab === 'published') {
       result = result.filter(lead => lead.status === 'LEAD_STATUS_PUBLISHED');
-    } else if (activeTab === 'new') {
-      result = result.filter(lead => lead.status === 'LEAD_STATUS_NEW');
     }
+    // Убираем вкладку "new" из каталога - она только для админов
 
     // Поиск
     if (filters.search) {
@@ -228,6 +248,17 @@ const LeadsCatalogPage = () => {
     return result;
   }, [parsedLeads, filters, activeTab, favorites]);
 
+  // Пагинированные лиды
+  const paginatedLeads = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredLeads.slice(startIndex, startIndex + pageSize);
+  }, [filteredLeads, currentPage, pageSize]);
+
+  // Сброс страницы при изменении фильтров
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, activeTab]);
+
   const handleSearch = (search: string) => {
     setFilters(prev => ({ ...prev, search }));
   };
@@ -238,11 +269,22 @@ const LeadsCatalogPage = () => {
 
   const clearFilters = () => {
     setFilters(INITIAL_FILTERS);
+    setMobileFiltersVisible(false);
   };
 
   const hasActiveFilters = useMemo(() => {
     return filters.search !== '' || filters.status !== 'all';
   }, [filters]);
+
+  // Обработчики пагинации
+  const handlePageChange = useCallback((page: number, size?: number) => {
+    setCurrentPage(page);
+    if (size && size !== pageSize) {
+      setPageSize(size);
+    }
+    // Скролл наверх при смене страницы
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [pageSize]);
 
   // Избранное
   const toggleFavorite = (leadId: string) => {
@@ -591,22 +633,30 @@ const LeadsCatalogPage = () => {
       {/* Вкладки и управление видом */}
       <Card className={styles.controlCard}>
         <div className={styles.controlRow}>
-          <Tabs
-            activeKey={activeTab}
-            onChange={setActiveTab}
-            items={[
-              { key: 'all', label: `Все лиды (${leads.length})` },
-              { key: 'favorites', label: `Избранное (${favorites.size})` },
-              { key: 'published', label: 'Опубликованные' },
-              { key: 'new', label: 'Новые' },
-            ]}
-          />
+          <div className={styles.tabsWrapper}>
+            <Tabs
+              activeKey={activeTab}
+              onChange={setActiveTab}
+              items={[
+                { key: 'all', label: `Все лиды (${leads.length})` },
+                { key: 'favorites', label: `Избранное (${favorites.size})` },
+              ]}
+            />
+          </div>
 
-          <Space>
+          <Space wrap>
+            {isMobile && (
+              <Button
+                icon={<FilterOutlined />}
+                onClick={() => setMobileFiltersVisible(true)}
+              >
+                Фильтры {hasActiveFilters && <Badge count="✓" size="small" style={{ backgroundColor: '#52c41a', marginLeft: 4 }} />}
+              </Button>
+            )}
             <Select
               value={viewPrefs.viewMode}
               onChange={(value) => setViewPrefs(prev => ({ ...prev, viewMode: value }))}
-              style={{ width: 120 }}
+              style={{ width: 100 }}
             >
               <Option value="grid">Сетка</Option>
               <Option value="list">Список</Option>
@@ -615,7 +665,7 @@ const LeadsCatalogPage = () => {
             <Select
               value={filters.sortBy}
               onChange={(value) => updateFilter('sortBy', value)}
-              style={{ width: 140 }}
+              style={{ width: 130 }}
             >
               {SORT_OPTIONS.map(option => (
                 <Option key={option.value} value={option.value}>
@@ -628,7 +678,7 @@ const LeadsCatalogPage = () => {
               icon={<FilterOutlined />}
               onClick={() => updateFilter('sortOrder', filters.sortOrder === 'asc' ? 'desc' : 'asc')}
             >
-              {filters.sortOrder === 'asc' ? 'По возрастанию' : 'По убыванию'}
+              {filters.sortOrder === 'asc' ? '↑' : '↓'}
             </Button>
           </Space>
         </div>
@@ -646,40 +696,41 @@ const LeadsCatalogPage = () => {
       )}
 
       <Row gutter={24}>
-        {/* Боковая панель фильтров */}
-        <Col xs={24} lg={6}>
-          <Card
-            className={styles.filtersCard}
-            title={
-              <Space>
-                <FilterOutlined />
-                Фильтры
-                {hasActiveFilters && (
-                  <Badge count="✓" style={{ backgroundColor: '#52c41a' }} />
-                )}
-              </Space>
-            }
-            extra={
-              <Button type="link" onClick={clearFilters} size="small">
-                Сбросить
-              </Button>
-            }
-          >
-            <Space direction="vertical" size={16} style={{ width: '100%' }}>
-              {/* Поиск */}
-              <div>
-                <Text strong>Поиск</Text>
-                <Input
-                  placeholder="Название, описание, контакт..."
-                  prefix={<SearchOutlined />}
-                  value={filters.search}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  style={{ marginTop: 8 }}
-                  allowClear
-                />
-              </div>
+        {/* Боковая панель фильтров - только для десктопа */}
+        {!isMobile && (
+          <Col xs={0} lg={6}>
+            <Card
+              className={styles.filtersCard}
+              title={
+                <Space>
+                  <FilterOutlined />
+                  Фильтры
+                  {hasActiveFilters && (
+                    <Badge count="✓" style={{ backgroundColor: '#52c41a' }} />
+                  )}
+                </Space>
+              }
+              extra={
+                <Button type="link" onClick={clearFilters} size="small">
+                  Сбросить
+                </Button>
+              }
+            >
+              <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                {/* Поиск */}
+                <div>
+                  <Text strong>Поиск</Text>
+                  <Input
+                    placeholder="Название, описание, контакт..."
+                    prefix={<SearchOutlined />}
+                    value={filters.search}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    style={{ marginTop: 8 }}
+                    allowClear
+                  />
+                </div>
 
-              <Divider />
+                <Divider />
 
               {/* Статус */}
               <div>
@@ -705,9 +756,10 @@ const LeadsCatalogPage = () => {
             </Space>
           </Card>
         </Col>
+        )}
 
         {/* Основная область с лидами */}
-        <Col xs={24} lg={18}>
+        <Col xs={24} lg={isMobile ? 24 : 18}>
           <div className={styles.leadsContainer}>
             {loading && initialLoadRef.current ? (
               <div className={styles.loadingContainer}>
@@ -718,21 +770,38 @@ const LeadsCatalogPage = () => {
               <>
                 <div className={styles.resultsInfo}>
                   <Text type="secondary">
-                    Найдено {filteredLeads.length} лидов
+                    Показано {paginatedLeads.length} из {filteredLeads.length} лидов
                     {hasActiveFilters && ' по вашим фильтрам'}
                   </Text>
                 </div>
 
                 {viewPrefs.viewMode === 'grid' ? (
                   <div className={styles.gridContainer}>
-                    {filteredLeads.map(renderLeadCard)}
+                    {paginatedLeads.map(renderLeadCard)}
                   </div>
                 ) : (
                   <List
-                    dataSource={filteredLeads}
+                    dataSource={paginatedLeads}
                     renderItem={renderLeadListItem}
                     className={styles.listView}
                   />
+                )}
+
+                {/* Пагинация */}
+                {filteredLeads.length > pageSize && (
+                  <div className={styles.paginationContainer}>
+                    <Pagination
+                      current={currentPage}
+                      pageSize={pageSize}
+                      total={filteredLeads.length}
+                      onChange={handlePageChange}
+                      showSizeChanger={!isMobile}
+                      showQuickJumper={!isMobile}
+                      pageSizeOptions={['12', '24', '48', '96']}
+                      showTotal={!isMobile ? (total) => `Всего ${total} лидов` : undefined}
+                      size={isMobile ? 'small' : 'default'}
+                    />
+                  </div>
                 )}
               </>
             ) : (
@@ -758,6 +827,75 @@ const LeadsCatalogPage = () => {
           </div>
         </Col>
       </Row>
+
+      {/* Мобильный Drawer с фильтрами */}
+      <Drawer
+        title={
+          <Space>
+            <FilterOutlined />
+            Фильтры
+            {hasActiveFilters && (
+              <Badge count="✓" style={{ backgroundColor: '#52c41a' }} />
+            )}
+          </Space>
+        }
+        placement="right"
+        onClose={() => setMobileFiltersVisible(false)}
+        open={mobileFiltersVisible}
+        width={300}
+        extra={
+          <Button type="link" onClick={clearFilters} size="small">
+            Сбросить
+          </Button>
+        }
+      >
+        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          {/* Поиск */}
+          <div>
+            <Text strong>Поиск</Text>
+            <Input
+              placeholder="Название, описание, контакт..."
+              prefix={<SearchOutlined />}
+              value={filters.search}
+              onChange={(e) => handleSearch(e.target.value)}
+              style={{ marginTop: 8 }}
+              allowClear
+            />
+          </div>
+
+          <Divider />
+
+          {/* Статус */}
+          <div>
+            <Text strong>Статус</Text>
+            <Select
+              value={filters.status}
+              onChange={(value) => updateFilter('status', value)}
+              style={{ width: '100%', marginTop: 8 }}
+            >
+              {STATUS_OPTIONS.map(option => (
+                <Option key={option.value} value={option.value}>
+                  {option.label}
+                </Option>
+              ))}
+            </Select>
+          </div>
+
+          <Divider />
+
+          <Button onClick={clearFilters} block type="default">
+            Сбросить все фильтры
+          </Button>
+
+          <Button
+            type="primary"
+            block
+            onClick={() => setMobileFiltersVisible(false)}
+          >
+            Применить
+          </Button>
+        </Space>
+      </Drawer>
 
       {renderDetailModal()}
     </div>

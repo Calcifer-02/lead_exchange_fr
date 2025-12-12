@@ -1,0 +1,217 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-bottom: 48px;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.pageTitle {
+  margin: 0 0 4px 0 !important;
+}
+
+/* Stats Cards */
+.statsRow {
+  margin-bottom: 8px;
+}
+
+.statCard {
+  border-radius: 12px;
+  border: 1px solid #e6ebf4;
+  transition: all 0.2s ease;
+}
+
+.statCard:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.statCardActive {
+  border-left: 3px solid #059669;
+}
+
+.statCardSuspended {
+  border-left: 3px solid #D97706;
+}
+
+.statCardBanned {
+  border-left: 3px solid #DC2626;
+}
+
+.statCardAdmin {
+  border-left: 3px solid #7C3AED;
+}
+
+/* Filters */
+.filtersCard {
+  border-radius: 12px;
+  border: 1px solid #e6ebf4;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 250px;
+  max-width: 400px;
+}
+
+.filterSelect {
+  min-width: 160px;
+}
+
+/* Table */
+.tableCard {
+  border-radius: 12px;
+  border: 1px solid #e6ebf4;
+  overflow: hidden;
+}
+
+.tableCard :global(.ant-card-body) {
+  padding: 0;
+}
+
+.tableCard :global(.ant-table-thead > tr > th) {
+  background: #f9fafb;
+  font-weight: 600;
+  color: #374151;
+}
+
+.tableCard :global(.ant-table-tbody > tr:hover > td) {
+  background: #f0f5ff;
+}
+
+/* User Cell */
+.userCell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.userAvatar {
+  flex-shrink: 0;
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.userName {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.adminIcon {
+  color: #7C3AED;
+  font-size: 14px;
+}
+
+.userEmail {
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Empty State */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  gap: 12px;
+}
+
+.emptyIcon {
+  font-size: 48px;
+  color: #d1d5db;
+}
+
+/* Modal */
+.statusModal :global(.ant-modal-content) {
+  border-radius: 16px;
+}
+
+.modalContent {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.selectedUserInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 12px;
+}
+
+.statusForm {
+  margin-top: 8px;
+}
+
+.statusSelect {
+  width: 100%;
+}
+
+.warningMessage {
+  padding: 12px 16px;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .searchInput {
+    max-width: none;
+  }
+
+  .filterSelect {
+    width: 100%;
+  }
+
+  .statsRow :global(.ant-col) {
+    flex: 0 0 50%;
+    max-width: 50%;
+  }
+}
+
+@media (max-width: 480px) {
+  .userCell {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .userAvatar {
+    display: none;
+  }
+}
+

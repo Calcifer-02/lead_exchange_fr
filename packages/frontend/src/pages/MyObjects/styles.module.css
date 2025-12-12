@@ -193,6 +193,108 @@
     color: #1f71ff;
 }
 
+.gridContainer {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+}
+
+.leadCard {
+    display: flex;
+    flex-direction: column;
+    border-radius: 12px;
+    border: 1px solid #e6ebf4;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.leadCard:hover {
+    border-color: rgba(31, 113, 255, 0.3);
+    box-shadow: 0 4px 12px rgba(31, 113, 255, 0.12);
+    transform: translateY(-2px);
+}
+
+.leadCardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.leadCardBody {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.leadCardTitle {
+    font-size: 16px;
+    line-height: 1.4;
+    color: #1f2937;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.leadCardDescription {
+    font-size: 13px;
+    line-height: 1.5;
+    color: #6b7280;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.leadCardFooter {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding-top: 12px;
+    border-top: 1px solid #f3f4f6;
+}
+
+.leadCardContact {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.leadCardActions {
+    display: flex;
+    gap: 4px;
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.leadCard:hover .leadCardActions {
+    opacity: 1;
+}
+
+.loadingPlaceholder,
+.emptyPlaceholder {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+    font-size: 16px;
+    color: #9ca3af;
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e6ebf4;
+    grid-column: 1 / -1;
+}
+
 @media (max-width: 991px) {
     .filtersBar {
         padding: 16px 12px;
@@ -221,5 +323,15 @@
     .controls {
         flex-wrap: wrap;
         gap: 12px;
+    }
+}
+
+@media (max-width: 767px) {
+    .gridContainer {
+        grid-template-columns: 1fr;
+    }
+
+    .leadCardActions {
+        opacity: 1;
     }
 }

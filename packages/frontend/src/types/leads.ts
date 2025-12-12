@@ -68,7 +68,7 @@ export interface LeadRequirement {
 
 export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   LEAD_STATUS_UNSPECIFIED: 'Не задан',
-  LEAD_STATUS_NEW: 'Создан',
+  LEAD_STATUS_NEW: 'На модерации',
   LEAD_STATUS_PUBLISHED: 'Опубликован',
   LEAD_STATUS_PURCHASED: 'Куплен',
   LEAD_STATUS_DELETED: 'Удалён',
@@ -76,8 +76,8 @@ export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
 
 export const LEAD_STATUS_COLORS: Record<LeadStatus, { text: string; bg: string; border: string }> = {
   LEAD_STATUS_UNSPECIFIED: { text: '#6B7280', bg: '#F9FAFB', border: '#E5E7EB' },
-  LEAD_STATUS_NEW: { text: '#059669', bg: '#ECFDF5', border: '#A7F3D0' },
-  LEAD_STATUS_PUBLISHED: { text: '#0891B2', bg: '#ECFEFF', border: '#67E8F9' },
+  LEAD_STATUS_NEW: { text: '#D97706', bg: '#FFFBEB', border: '#FCD34D' },
+  LEAD_STATUS_PUBLISHED: { text: '#059669', bg: '#ECFDF5', border: '#A7F3D0' },
   LEAD_STATUS_PURCHASED: { text: '#7C3AED', bg: '#F3E8FF', border: '#C4B5FD' },
   LEAD_STATUS_DELETED: { text: '#DC2626', bg: '#FEF2F2', border: '#FCA5A5' },
 };

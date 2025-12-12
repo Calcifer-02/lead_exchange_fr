@@ -189,7 +189,10 @@ const AuthPage: React.FC = () => {
         name="email"
         rules={[
           { required: true, message: 'Введите email' },
-          { type: 'email', message: 'Введите корректный email' },
+          {
+            pattern: /^[^\s@]+@[^\s@]+\.[^\s@]{1,}$/,
+            message: 'Введите корректный email'
+          },
         ]}
       >
         <Input
@@ -268,7 +271,10 @@ const AuthPage: React.FC = () => {
         name="email"
         rules={[
           { required: true, message: 'Введите email' },
-          { type: 'email', message: 'Введите корректный email' },
+          {
+            pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+            message: 'Введите корректный email'
+          },
         ]}
       >
         <Input

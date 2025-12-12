@@ -1,9 +1,10 @@
-n/* styles.module.css */
+/* styles.module.css */
 
 .page {
     padding: 24px;
     max-width: 1600px;
     margin: 0 auto;
+    overflow-x: hidden;
 }
 
 .pageTitle {
@@ -28,6 +29,12 @@ n/* styles.module.css */
 
 .controlCard {
     margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.controlCard :global(.ant-card-body) {
+    padding: 16px;
+    overflow-x: auto;
 }
 
 .controlRow {
@@ -36,6 +43,26 @@ n/* styles.module.css */
     align-items: center;
     flex-wrap: wrap;
     gap: 16px;
+    min-width: 0;
+}
+
+.tabsWrapper {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.tabsWrapper :global(.ant-tabs-nav) {
+    margin: 0;
+}
+
+.tabsWrapper :global(.ant-tabs-nav-wrap) {
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.tabsWrapper :global(.ant-tabs-nav-list) {
+    flex-wrap: nowrap;
 }
 
 .filtersCard {
@@ -55,6 +82,11 @@ n/* styles.module.css */
 
 .resultsInfo {
     margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
 }
 
 /* Lead Card */
@@ -149,6 +181,54 @@ n/* styles.module.css */
 
 /* List View */
 
+.listView {
+    background: transparent;
+}
+
+.listView :global(.ant-list-item) {
+    padding: 16px 20px;
+    background: white;
+    margin-bottom: 12px;
+    border-radius: 12px;
+    border: 1px solid #e8e8e8;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s ease;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.listView :global(.ant-list-item:hover) {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    border-color: #d9d9d9;
+}
+
+.listView :global(.ant-list-item-meta) {
+    flex: 1;
+    min-width: 0;
+}
+
+.listView :global(.ant-list-item-meta-avatar) {
+    margin-right: 16px;
+}
+
+.listView :global(.ant-list-item-meta-title) {
+    margin-bottom: 8px;
+}
+
+.listView :global(.ant-list-item-meta-description) {
+    color: #595959;
+}
+
+.listView :global(.ant-list-item-action) {
+    margin-left: 0;
+    margin-top: 0;
+    flex-shrink: 0;
+}
+
+.listView :global(.ant-list-item-action > li) {
+    padding: 0 8px;
+}
+
 .listItem {
     padding: 16px 24px;
     border-bottom: 1px solid #f0f0f0;
@@ -161,47 +241,173 @@ n/* styles.module.css */
     background: #fafafa;
 }
 
-.listView {
-    background: transparent;
-}
 
 .gridContainer {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 20px;
+}
+
+/* Pagination */
+.paginationContainer {
+    display: flex;
+    justify-content: center;
+    margin-top: 24px;
+    padding: 16px 0;
+}
+
+.paginationContainer :global(.ant-pagination) {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+}
+
+/* Mobile Filters */
+.mobileFiltersButton {
+    display: none;
+}
+
+.mobileFiltersDrawer :global(.ant-drawer-body) {
+    padding: 16px;
 }
 
 /* Адаптивность */
 @media (max-width: 992px) {
     .page {
         padding: 16px;
+        overflow-x: hidden;
     }
 
     .headerTop {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
+    }
+
+    .headerTop > * {
+        width: 100%;
+    }
+
+    .headerTop :global(.ant-space) {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+    }
+
+    .controlCard :global(.ant-card-body) {
+        padding: 12px;
     }
 
     .controlRow {
         flex-direction: column;
         align-items: stretch;
+        gap: 12px;
+    }
+
+    .controlRow :global(.ant-tabs) {
+        width: 100%;
+        max-width: 100%;
+        overflow: hidden;
+    }
+
+    .controlRow :global(.ant-tabs-nav) {
+        margin: 0;
+        max-width: 100%;
+    }
+
+    .controlRow :global(.ant-tabs-nav-wrap) {
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .controlRow :global(.ant-tabs-nav-list) {
+        flex-wrap: nowrap;
+    }
+
+    .controlRow :global(.ant-space) {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .controlRow :global(.ant-space) > :global(.ant-space-item) {
+        flex: 1 1 auto;
+        min-width: 100px;
+    }
+
+    .controlRow :global(.ant-select) {
+        width: 100% !important;
+    }
+
+    .controlRow :global(.ant-btn) {
+        width: 100%;
+    }
+
+    .mobileFiltersButton {
+        display: block;
+        margin-bottom: 16px;
+    }
+
+    .filtersCard {
+        display: none;
+    }
+
+    .gridContainer {
+        grid-template-columns: 1fr;
+        gap: 16px;
     }
 
     .leadCard {
         width: 100%;
-        max-width: 400px;
-    }
-
-    .gridContainer {
-        justify-content: center;
+        max-width: 100%;
     }
 
     .leadPrice {
         font-size: 16px;
     }
+
+    /* List View на планшетах */
+    .listView :global(.ant-list-item) {
+        padding: 12px 16px;
+    }
+
+    .listView :global(.ant-list-item-action) {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .listView :global(.ant-list-item-action > li) {
+        padding: 0 4px;
+    }
 }
 
 @media (max-width: 576px) {
+    .page {
+        padding: 12px;
+    }
+
+    .pageTitle {
+        font-size: 20px !important;
+    }
+
+    .headerTop :global(.ant-btn) {
+        font-size: 13px;
+        padding: 4px 12px;
+        height: auto;
+    }
+
+    .controlCard :global(.ant-card-body) {
+        padding: 10px;
+    }
+
+    .controlRow :global(.ant-tabs-tab) {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+
+    .leadCard {
+        padding: 12px;
+    }
+
     .leadTitle {
         font-size: 15px !important;
         min-height: auto;
@@ -218,5 +424,55 @@ n/* styles.module.css */
 
     .listItem {
         padding: 12px;
+    }
+
+    /* List View на мобилках */
+    .listView :global(.ant-list-item) {
+        padding: 12px;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .listView :global(.ant-list-item-meta) {
+        width: 100%;
+        margin-bottom: 12px;
+    }
+
+    .listView :global(.ant-list-item-meta-avatar) {
+        display: none;
+    }
+
+    .listView :global(.ant-list-item-action) {
+        width: 100%;
+        justify-content: flex-start;
+        margin-left: 0;
+        padding-left: 0;
+    }
+
+    .listView :global(.ant-list-item-action > li) {
+        padding: 0;
+        margin-right: 8px;
+    }
+
+    .listView :global(.ant-list-item-action > li:first-child) {
+        padding-left: 0;
+    }
+
+    .listView :global(.ant-btn) {
+        font-size: 13px;
+        padding: 4px 10px;
+        height: auto;
+    }
+
+    .paginationContainer :global(.ant-pagination-item),
+    .paginationContainer :global(.ant-pagination-prev),
+    .paginationContainer :global(.ant-pagination-next) {
+        min-width: 32px;
+        height: 32px;
+        line-height: 32px;
+    }
+
+    .paginationContainer :global(.ant-pagination-options) {
+        display: none;
     }
 }

@@ -40,13 +40,18 @@
     position: fixed;
     left: 0;
     top: 0;
+    width: 280px;
+    height: 100vh;
     z-index: 1000;
     transform: translateX(-100%);
     transition: transform 0.3s ease;
+    background: white;
+    box-shadow: none;
   }
 
   .sidebarOpen {
     transform: translateX(0);
+    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.15);
   }
 
   .overlay {
@@ -58,6 +63,8 @@
     bottom: 0;
     background: rgba(0, 0, 0, 0.45);
     z-index: 999;
+    opacity: 1;
+    transition: opacity 0.3s ease;
   }
 
   .content {
