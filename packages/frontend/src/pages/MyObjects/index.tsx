@@ -5,9 +5,10 @@ import {
   EditOutlined,
   EyeOutlined,
   FilterOutlined,
+  HeartOutlined,
+  HomeOutlined,
   MoreOutlined,
   OrderedListOutlined,
-  PlusOutlined,
   SearchOutlined,
   TableOutlined,
   UserAddOutlined,
@@ -21,6 +22,7 @@ import {
   Segmented,
   Space,
   Table,
+  Tabs,
   Tag,
   Tooltip,
   Typography,
@@ -30,13 +32,15 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import type { MenuProps } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { leadsAPI } from '../../api';
-import type { Lead, LeadStatus } from '../../types/leads';
-import { LEAD_STATUS_LABELS, LEAD_STATUS_COLORS } from '../../types/leads';
+import { leadsAPI, propertiesAPI } from '../../api';
+import type { Lead, LeadStatus, Property, PropertyStatus } from '../../types';
+import { LEAD_STATUS_LABELS, LEAD_STATUS_COLORS, PROPERTY_STATUS_LABELS } from '../../types';
 import styles from './styles.module.css';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
+
+type TabType = 'leads' | 'properties';
 
 interface EditFormValues {
   title: string;
@@ -46,9 +50,20 @@ interface EditFormValues {
   contactEmail: string;
 }
 
+// Цвета для статусов объектов
+const PROPERTY_STATUS_COLORS: Record<PropertyStatus, { text: string; bg: string; border: string }> = {
+  PROPERTY_STATUS_UNSPECIFIED: { text: '#8c8c8c', bg: '#fafafa', border: '#d9d9d9' },
+  PROPERTY_STATUS_NEW: { text: '#1890ff', bg: '#e6f7ff', border: '#91d5ff' },
+  PROPERTY_STATUS_PUBLISHED: { text: '#52c41a', bg: '#f6ffed', border: '#b7eb8f' },
+  PROPERTY_STATUS_SOLD: { text: '#722ed1', bg: '#f9f0ff', border: '#d3adf7' },
+  PROPERTY_STATUS_DELETED: { text: '#ff4d4f', bg: '#fff1f0', border: '#ffa39e' },
+};
+
 const MyObjectsPage = () => {
+  const [activeTab, setActiveTab] = useState<TabType>('leads');
   const [view, setView] = useState<'list' | 'grid'>('list');
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -70,14 +85,23 @@ const MyObjectsPage = () => {
     );
   }, [leads, searchQuery]);
 
+  // Мемоизируем отфильтрованные объекты
+  const filteredProperties = useMemo(() => {
+    if (!searchQuery.trim()) return properties;
+
+    const query = searchQuery.toLowerCase();
+    return properties.filter(property =>
+      property.title.toLowerCase().includes(query) ||
+      property.description?.toLowerCase().includes(query) ||
+      property.address?.toLowerCase().includes(query)
+    );
+  }, [properties, searchQuery]);
+
   // Загрузка лидов
   const loadLeads = useCallback(async () => {
     try {
-      setLoading(true);
       const userId = localStorage.getItem('userId');
       if (!userId) {
-        message.error('Не удалось определить ID пользователя. Попробуйте выйти и войти снова.');
-        setLoading(false);
         return;
       }
 
@@ -87,16 +111,46 @@ const MyObjectsPage = () => {
 
       setLeads(response.leads);
     } catch {
-      message.error('Не удалось загрузить список объектов');
-    } finally {
-      setLoading(false);
+      message.error('Не удалось загрузить список лидов');
     }
   }, []);
 
-  // Загружаем лиды пользователя при монтировании
+  // Загрузка объектов недвижимости
+  const loadProperties = useCallback(async () => {
+    try {
+      const userId = localStorage.getItem('userId');
+      if (!userId) {
+        return;
+      }
+
+      const propertiesList = await propertiesAPI.getProperties({
+        createdUserId: userId,
+      });
+
+      setProperties(propertiesList);
+    } catch {
+      message.error('Не удалось загрузить список объектов');
+    }
+  }, []);
+
+  // Загружаем данные при монтировании и смене вкладки
   useEffect(() => {
-    loadLeads();
-  }, [loadLeads]);
+    const loadData = async () => {
+      setLoading(true);
+      const userId = localStorage.getItem('userId');
+
+      if (!userId) {
+        message.error('Не удалось определить ID пользователя. Попробуйте выйти и войти снова.');
+        setLoading(false);
+        return;
+      }
+
+      await Promise.all([loadLeads(), loadProperties()]);
+      setLoading(false);
+    };
+
+    loadData();
+  }, [loadLeads, loadProperties]);
 
   // Открыть модалку редактирования
   const handleEdit = useCallback((lead: Lead) => {
@@ -168,6 +222,15 @@ const MyObjectsPage = () => {
       },
     },
     {
+      key: 'matching',
+      icon: <HeartOutlined />,
+      label: 'Подобрать объекты',
+      onClick: (info) => {
+        info.domEvent.stopPropagation();
+        navigate(`/leads/${lead.leadId}/matching`);
+      },
+    },
+    {
       key: 'edit',
       icon: <EditOutlined />,
       label: 'Редактировать',
@@ -196,7 +259,51 @@ const MyObjectsPage = () => {
         });
       },
     },
-  ], [handleView, handleEdit, handleDelete]);
+  ], [handleView, handleEdit, handleDelete, navigate]);
+
+  // Меню действий для объекта недвижимости
+  const getPropertyActionsMenu = useCallback((property: Property): MenuProps['items'] => [
+    {
+      key: 'edit',
+      icon: <EditOutlined />,
+      label: 'Редактировать',
+      onClick: (info) => {
+        info.domEvent.stopPropagation();
+        // TODO: Реализовать редактирование объекта
+        message.info('Редактирование объекта в разработке');
+      },
+    },
+    {
+      type: 'divider',
+    },
+    {
+      key: 'delete',
+      icon: <DeleteOutlined />,
+      label: 'Удалить',
+      danger: true,
+      onClick: (info) => {
+        info.domEvent.stopPropagation();
+        Modal.confirm({
+          title: 'Удалить объект?',
+          content: `Вы уверены, что хотите удалить "${property.title}"? Это действие нельзя отменить.`,
+          okText: 'Удалить',
+          okType: 'danger',
+          cancelText: 'Отмена',
+          onOk: async () => {
+            try {
+              await propertiesAPI.updateProperty(property.propertyId, {
+                status: 'PROPERTY_STATUS_DELETED',
+              });
+              message.success('Объект успешно удалён');
+              await loadProperties();
+            } catch {
+              message.error('Не удалось удалить объект');
+            }
+          },
+        });
+      },
+    },
+  ], [loadProperties]);
 
   const columns = useMemo<ColumnsType<Lead>>(
     () => [
@@ -310,9 +417,6 @@ const MyObjectsPage = () => {
     [handleEdit, handleDelete, deleteLoading, getActionsMenu],
   );
 
-  const handleCreateNew = () => {
-    navigate('/my-objects/new');
-  };
 
   const handleShowCollections = () => {
     // TODO: Реализовать показ сохраненных подборок
@@ -434,26 +538,30 @@ const MyObjectsPage = () => {
     <div className={styles.page}>
       <header className={styles.pageHeader}>
         <Title level={2} className={styles.pageTitle}>
-          Мои объекты ({leads.length})
+          Мои объекты ({activeTab === 'leads' ? leads.length : properties.length})
         </Title>
         <Space>
-          <Button
-            size="large"
-            icon={<UserAddOutlined />}
-            className={styles.pageHeaderAction}
-            onClick={() => navigate('/leads/new')}
-          >
-            Создать лид
-          </Button>
-          <Button
-            type="primary"
-            size="large"
-            icon={<PlusOutlined />}
-            className={styles.pageHeaderAction}
-            onClick={handleCreateNew}
-          >
-            Создать объект
-          </Button>
+          {activeTab === 'leads' ? (
+            <Button
+              type="primary"
+              size="large"
+              icon={<UserAddOutlined />}
+              className={styles.pageHeaderAction}
+              onClick={() => navigate('/leads/new')}
+            >
+              Создать лид
+            </Button>
+          ) : (
+            <Button
+              type="primary"
+              size="large"
+              icon={<HomeOutlined />}
+              className={styles.pageHeaderAction}
+              onClick={() => navigate('/properties/new')}
+            >
+              Создать объект
+            </Button>
+          )}
         </Space>
       </header>
 
@@ -462,7 +570,9 @@ const MyObjectsPage = () => {
           <Input
             allowClear
             prefix={<SearchOutlined className={styles.searchIcon} />}
-            placeholder="Поиск по названию, контакту или описанию..."
+            placeholder={activeTab === 'leads'
+              ? "Поиск по названию, контакту или описанию..."
+              : "Поиск по названию, адресу или описанию..."}
             size="large"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -495,41 +605,155 @@ const MyObjectsPage = () => {
         </Button>
       </div>
 
-      {view === 'list' ? (
-        <div className={styles.tableCard}>
-          <Table<Lead>
-            columns={columns}
-            dataSource={filteredLeads}
-            loading={loading}
-            pagination={{
-              pageSize: 20,
-              showSizeChanger: true,
-              pageSizeOptions: ['10', '20', '50', '100'],
-              showTotal: (total) => `Всего: ${total}`,
-            }}
-            rowKey="leadId"
-            scroll={{ x: 900 }}
-            locale={{
-              emptyText: loading ? 'Загрузка...' : 'У вас пока нет объектов',
-            }}
-            onRow={(record) => ({
-              onClick: () => handleLeadClick(record),
-              style: { cursor: 'pointer' },
-            })}
-            rowClassName={styles.tableRow}
-          />
-        </div>
-      ) : (
-        <div className={styles.gridContainer}>
-          {loading ? (
-            <div className={styles.loadingPlaceholder}>Загрузка...</div>
-          ) : filteredLeads.length === 0 ? (
-            <div className={styles.emptyPlaceholder}>У вас пока нет объектов</div>
-          ) : (
-            filteredLeads.map(renderLeadCard)
-          )}
-        </div>
-      )}
+      <Tabs
+        activeKey={activeTab}
+        onChange={(key) => setActiveTab(key as TabType)}
+        className={styles.tabs}
+        items={[
+          {
+            key: 'leads',
+            label: 'Лиды',
+            children: (
+              view === 'list' ? (
+                <div className={styles.tableCard}>
+                  <Table<Lead>
+                    columns={columns}
+                    dataSource={filteredLeads}
+                    loading={loading}
+                    pagination={{
+                      pageSize: 20,
+                      showSizeChanger: true,
+                      pageSizeOptions: ['10', '20', '50', '100'],
+                      showTotal: (total) => `Всего: ${total}`,
+                    }}
+                    rowKey="leadId"
+                    scroll={{ x: 900 }}
+                    locale={{
+                      emptyText: loading ? 'Загрузка...' : 'У вас пока нет объектов',
+                    }}
+                    onRow={(record) => ({
+                      onClick: () => handleLeadClick(record),
+                      style: { cursor: 'pointer' },
+                    })}
+                    rowClassName={styles.tableRow}
+                  />
+                </div>
+              ) : (
+                <div className={styles.gridContainer}>
+                  {loading ? (
+                    <div className={styles.loadingPlaceholder}>Загрузка...</div>
+                  ) : filteredLeads.length === 0 ? (
+                    <div className={styles.emptyPlaceholder}>У вас пока нет объектов</div>
+                  ) : (
+                    filteredLeads.map(renderLeadCard)
+                  )}
+                </div>
+              )
+            ),
+          },
+          {
+            key: 'properties',
+            label: 'Объекты',
+            children: (
+              <div className={styles.gridContainer}>
+                {loading ? (
+                  <div className={styles.loadingPlaceholder}>Загрузка...</div>
+                ) : filteredProperties.length === 0 ? (
+                  <div className={styles.emptyPlaceholder}>У вас пока нет объектов</div>
+                ) : (
+                  filteredProperties.map((property) => (
+                    <div key={property.propertyId} className={styles.propertyCard}>
+                      <div className={styles.propertyCardHeader}>
+                        <Tag
+                          style={{
+                            color: PROPERTY_STATUS_COLORS[property.status].text,
+                            background: PROPERTY_STATUS_COLORS[property.status].bg,
+                            borderColor: PROPERTY_STATUS_COLORS[property.status].border,
+                            margin: 0,
+                          }}
+                        >
+                          {PROPERTY_STATUS_LABELS[property.status]}
+                        </Tag>
+                        <Dropdown
+                          menu={{ items: getPropertyActionsMenu(property) }}
+                          trigger={['click']}
+                        >
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<MoreOutlined />}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </Dropdown>
+                      </div>
+
+                      <div className={styles.propertyCardBody}>
+                        <Text strong className={styles.propertyCardTitle}>
+                          {property.title}
+                        </Text>
+                        {property.description && (
+                          <Text type="secondary" className={styles.propertyCardDescription}>
+                            {property.description.length > 100
+                              ? `${property.description.slice(0, 100)}...`
+                              : property.description}
+                          </Text>
+                        )}
+                      </div>
+
+                      <div className={styles.propertyCardFooter}>
+                        <div className={styles.propertyCardContact}>
+                          <Text type="secondary" style={{ fontSize: '12px' }}>
+                            {property.address}
+                          </Text>
+                        </div>
+                        <Text type="secondary" style={{ fontSize: '11px' }}>
+                          {new Date(property.createdAt).toLocaleDateString('ru-RU')}
+                        </Text>
+                      </div>
+
+                      <div className={styles.propertyCardActions}>
+                        <Tooltip title="Редактировать">
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<EditOutlined />}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // TODO: Реализовать редактирование объекта
+                            }}
+                          />
+                        </Tooltip>
+                        <Tooltip title="Удалить">
+                          <Button
+                            type="text"
+                            size="small"
+                            danger
+                            icon={<DeleteOutlined />}
+                            loading={deleteLoading === property.propertyId}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              Modal.confirm({
+                                title: 'Удалить объект?',
+                                content: `Вы уверены, что хотите удалить "${property.title}"?`,
+                                okText: 'Удалить',
+                                okType: 'danger',
+                                cancelText: 'Отмена',
+                                onOk: () => {
+                                  // TODO: Реализовать удаление объекта
+                                },
+                              });
+                            }}
+                          />
+                        </Tooltip>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            ),
+          },
+        ]}
+      />
 
       {/* Модальное окно редактирования лида */}
       <Modal

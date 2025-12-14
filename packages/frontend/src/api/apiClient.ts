@@ -26,10 +26,11 @@ apiClient.interceptors.response.use(
     if (error.response) {
       const errorData = error.response.data as { code?: number; message?: string };
 
-      // Обработка ошибок авторизации (401 или истекший токен)
+      // Обработка ошибок авторизации (401 или истекший токен или отсутствующий токен)
       if (
         error.response.status === 401 ||
-        (error.response.status === 500 && errorData?.message?.includes('token is expired'))
+        (error.response.status === 500 && errorData?.message?.includes('token is expired')) ||
+        (error.response.status === 500 && errorData?.message?.includes('missing authorization header'))
       ) {
         // Очищаем данные авторизации
         localStorage.removeItem('token');

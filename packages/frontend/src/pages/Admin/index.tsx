@@ -16,6 +16,9 @@ import {
   CheckOutlined,
   CloseOutlined,
   EyeOutlined,
+  HomeOutlined,
+  EnvironmentOutlined,
+  DollarOutlined,
 } from '@ant-design/icons';
 import {
   Typography,
@@ -40,11 +43,13 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { MenuProps } from 'antd';
-import { userAPI, leadsAPI } from '../../api';
+import { userAPI, leadsAPI, propertiesAPI } from '../../api';
 import type { User, UserRole, UserStatus, ListUsersFilter } from '../../types/user';
 import { USER_ROLE_LABELS, USER_STATUS_LABELS, USER_STATUS_COLORS } from '../../types/user';
 import type { Lead, LeadStatus } from '../../types/leads';
 import { LEAD_STATUS_LABELS, LEAD_STATUS_COLORS } from '../../types/leads';
+import type { Property, PropertyStatus, PropertyType } from '../../types/properties';
+import { PROPERTY_TYPE_LABELS, PROPERTY_STATUS_LABELS } from '../../types/properties';
 import styles from './styles.module.css';
 
 const { Title, Text } = Typography;
@@ -66,6 +71,23 @@ interface LeadsStats {
   published: number;
   purchased: number;
 }
+
+// Статистика по объектам недвижимости
+interface PropertiesStats {
+  total: number;
+  pending: number;
+  published: number;
+  sold: number;
+}
+
+// Цвета для статусов объектов
+const PROPERTY_STATUS_COLORS: Record<PropertyStatus, { text: string; bg: string; border: string }> = {
+  PROPERTY_STATUS_UNSPECIFIED: { text: '#8c8c8c', bg: '#fafafa', border: '#d9d9d9' },
+  PROPERTY_STATUS_NEW: { text: '#D97706', bg: '#FEF3C7', border: '#FCD34D' },
+  PROPERTY_STATUS_PUBLISHED: { text: '#059669', bg: '#D1FAE5', border: '#6EE7B7' },
+  PROPERTY_STATUS_SOLD: { text: '#7C3AED', bg: '#EDE9FE', border: '#C4B5FD' },
+  PROPERTY_STATUS_DELETED: { text: '#DC2626', bg: '#FEE2E2', border: '#FCA5A5' },
+};
 
 const AdminPage = () => {
   // Активная вкладка
@@ -102,6 +124,21 @@ const AdminPage = () => {
     pending: 0,
     published: 0,
     purchased: 0,
+  });
+
+  // Состояния для объектов недвижимости
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [propertiesLoading, setPropertiesLoading] = useState(false);
+  const [propertiesSearchText, setPropertiesSearchText] = useState('');
+  const [propertiesStatusFilter, setPropertiesStatusFilter] = useState<PropertyStatus | undefined>(undefined);
+  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const [propertyDetailVisible, setPropertyDetailVisible] = useState(false);
+  const [updatingProperty, setUpdatingProperty] = useState(false);
+  const [propertiesStats, setPropertiesStats] = useState<PropertiesStats>({
+    total: 0,
+    pending: 0,
+    published: 0,
+    sold: 0,
   });
 
   // Загрузка списка лидов
@@ -173,6 +210,92 @@ const AdminPage = () => {
     });
   };
 
+  // Загрузка списка объектов недвижимости
+  const loadProperties = useCallback(async () => {
+    try {
+      setPropertiesLoading(true);
+      const propertiesList = await propertiesAPI.getProperties({
+        status: propertiesStatusFilter,
+      });
+
+      setProperties(propertiesList || []);
+
+      // Рассчитываем статистику
+      const statsData: PropertiesStats = {
+        total: propertiesList.length,
+        pending: propertiesList.filter(p => p.status === 'PROPERTY_STATUS_NEW').length,
+        published: propertiesList.filter(p => p.status === 'PROPERTY_STATUS_PUBLISHED').length,
+        sold: propertiesList.filter(p => p.status === 'PROPERTY_STATUS_SOLD').length,
+      };
+      setPropertiesStats(statsData);
+    } catch (error) {
+      console.error('Failed to load properties:', error);
+      message.error('Не удалось загрузить список объектов');
+    } finally {
+      setPropertiesLoading(false);
+    }
+  }, [propertiesStatusFilter]);
+
+  // Одобрить объект (опубликовать)
+  const handleApproveProperty = async (property: Property) => {
+    try {
+      setUpdatingProperty(true);
+      await propertiesAPI.updateProperty(property.propertyId, {
+        status: 'PROPERTY_STATUS_PUBLISHED',
+      });
+      message.success('Объект опубликован');
+      loadProperties();
+    } catch (error) {
+      console.error('Failed to approve property:', error);
+      message.error('Не удалось опубликовать объект');
+    } finally {
+      setUpdatingProperty(false);
+    }
+  };
+
+  // Отклонить объект (удалить)
+  const handleRejectProperty = async (property: Property) => {
+    Modal.confirm({
+      title: 'Отклонить объект?',
+      content: `Вы уверены, что хотите отклонить объект "${property.title}"?`,
+      okText: 'Отклонить',
+      okType: 'danger',
+      cancelText: 'Отмена',
+      onOk: async () => {
+        try {
+          setUpdatingProperty(true);
+          await propertiesAPI.updateProperty(property.propertyId, {
+            status: 'PROPERTY_STATUS_DELETED',
+          });
+          message.success('Объект отклонён');
+          loadProperties();
+        } catch (error) {
+          console.error('Failed to reject property:', error);
+          message.error('Не удалось отклонить объект');
+        } finally {
+          setUpdatingProperty(false);
+        }
+      },
+    });
+  };
+
+  // Изменить статус объекта
+  const handleChangePropertyStatus = async (property: Property, newStatus: PropertyStatus) => {
+    try {
+      setUpdatingProperty(true);
+      await propertiesAPI.updateProperty(property.propertyId, {
+        status: newStatus,
+      });
+      message.success('Статус объекта изменён');
+      loadProperties();
+    } catch (error) {
+      console.error('Failed to update property status:', error);
+      message.error('Не удалось изменить статус объекта');
+    } finally {
+      setUpdatingProperty(false);
+    }
+  };
+
   // Загрузка списка пользователей
   const loadUsers = useCallback(async () => {
     try {
@@ -217,6 +340,13 @@ const AdminPage = () => {
       loadLeads();
     }
   }, [activeTab, loadLeads]);
+
+  // Загрузка объектов при смене вкладки
+  useEffect(() => {
+    if (activeTab === 'properties') {
+      loadProperties();
+    }
+  }, [activeTab, loadProperties]);
 
   // Обработчик изменения статуса
   const handleStatusChange = async () => {
@@ -540,6 +670,184 @@ const AdminPage = () => {
     },
   ];
 
+  // Фильтрация объектов
+  const filteredProperties = properties.filter(property => {
+    if (propertiesSearchText) {
+      const searchLower = propertiesSearchText.toLowerCase();
+      return (
+        property.title.toLowerCase().includes(searchLower) ||
+        property.description?.toLowerCase().includes(searchLower) ||
+        property.address?.toLowerCase().includes(searchLower)
+      );
+    }
+    return true;
+  });
+
+  // Меню действий для объекта
+  const getPropertyActionMenu = (property: Property): MenuProps['items'] => [
+    {
+      key: 'publish',
+      label: 'Опубликовать',
+      icon: <CheckCircleOutlined style={{ color: '#059669' }} />,
+      disabled: property.status === 'PROPERTY_STATUS_PUBLISHED',
+      onClick: () => handleChangePropertyStatus(property, 'PROPERTY_STATUS_PUBLISHED'),
+    },
+    {
+      key: 'unpublish',
+      label: 'Снять с публикации',
+      icon: <PauseCircleOutlined style={{ color: '#D97706' }} />,
+      disabled: property.status === 'PROPERTY_STATUS_NEW',
+      onClick: () => handleChangePropertyStatus(property, 'PROPERTY_STATUS_NEW'),
+    },
+    {
+      key: 'sold',
+      label: 'Отметить как проданный',
+      icon: <DollarOutlined style={{ color: '#7C3AED' }} />,
+      disabled: property.status === 'PROPERTY_STATUS_SOLD',
+      onClick: () => handleChangePropertyStatus(property, 'PROPERTY_STATUS_SOLD'),
+    },
+    {
+      type: 'divider',
+    },
+    {
+      key: 'delete',
+      label: 'Удалить',
+      icon: <CloseOutlined style={{ color: '#DC2626' }} />,
+      danger: true,
+      onClick: () => handleRejectProperty(property),
+    },
+  ];
+
+  // Колонки таблицы объектов
+  const propertiesColumns: ColumnsType<Property> = [
+    {
+      title: 'Объект',
+      key: 'property',
+      width: 300,
+      render: (_, record) => (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <HomeOutlined style={{ color: '#1890ff' }} />
+            <Text strong>{record.title}</Text>
+          </div>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {record.description?.substring(0, 60)}
+            {record.description && record.description.length > 60 ? '...' : ''}
+          </Text>
+        </div>
+      ),
+    },
+    {
+      title: 'Тип',
+      dataIndex: 'propertyType',
+      key: 'propertyType',
+      width: 140,
+      render: (type: PropertyType) => (
+        <Tag color="blue">
+          {PROPERTY_TYPE_LABELS[type] || type}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Адрес',
+      dataIndex: 'address',
+      key: 'address',
+      width: 200,
+      render: (address: string) => (
+        <Space>
+          <EnvironmentOutlined style={{ color: '#8c8c8c' }} />
+          <Text type="secondary">{address || 'Не указан'}</Text>
+        </Space>
+      ),
+    },
+    {
+      title: 'Цена',
+      dataIndex: 'price',
+      key: 'price',
+      width: 140,
+      render: (price: string) => (
+        <Text strong style={{ color: '#137333' }}>
+          {price ? `${Number(price).toLocaleString('ru-RU')} ₽` : '—'}
+        </Text>
+      ),
+    },
+    {
+      title: 'Статус',
+      dataIndex: 'status',
+      key: 'status',
+      width: 140,
+      render: (status: PropertyStatus) => {
+        const colors = PROPERTY_STATUS_COLORS[status];
+        return (
+          <Tag
+            style={{
+              color: colors.text,
+              backgroundColor: colors.bg,
+              borderColor: colors.border,
+            }}
+          >
+            {PROPERTY_STATUS_LABELS[status] || status}
+          </Tag>
+        );
+      },
+    },
+    {
+      title: 'Дата создания',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
+      width: 140,
+      render: (date: string) => (
+        <Text type="secondary">
+          {new Date(date).toLocaleDateString('ru-RU')}
+        </Text>
+      ),
+    },
+    {
+      title: 'Действия',
+      key: 'actions',
+      width: 200,
+      fixed: 'right',
+      render: (_, record) => (
+        <Space>
+          <Tooltip title="Просмотреть">
+            <Button
+              type="text"
+              icon={<EyeOutlined />}
+              onClick={() => {
+                setSelectedProperty(record);
+                setPropertyDetailVisible(true);
+              }}
+            />
+          </Tooltip>
+          {record.status === 'PROPERTY_STATUS_NEW' && (
+            <>
+              <Tooltip title="Опубликовать">
+                <Button
+                  type="text"
+                  icon={<CheckOutlined style={{ color: '#059669' }} />}
+                  onClick={() => handleApproveProperty(record)}
+                  loading={updatingProperty}
+                />
+              </Tooltip>
+              <Tooltip title="Отклонить">
+                <Button
+                  type="text"
+                  danger
+                  icon={<CloseOutlined />}
+                  onClick={() => handleRejectProperty(record)}
+                  loading={updatingProperty}
+                />
+              </Tooltip>
+            </>
+          )}
+          <Dropdown menu={{ items: getPropertyActionMenu(record) }} trigger={['click']}>
+            <Button type="text" size="small">...</Button>
+          </Dropdown>
+        </Space>
+      ),
+    },
+  ];
+
 
   return (
     <div className={styles.page}>
@@ -550,13 +858,17 @@ const AdminPage = () => {
             Администрирование
           </Title>
           <Text type="secondary">
-            Управление пользователями и модерация лидов
+            Управление пользователями, модерация лидов и объектов
           </Text>
         </div>
         <Button
           icon={<ReloadOutlined />}
-          onClick={activeTab === 'users' ? loadUsers : loadLeads}
-          loading={activeTab === 'users' ? loading : leadsLoading}
+          onClick={() => {
+            if (activeTab === 'users') loadUsers();
+            else if (activeTab === 'leads') loadLeads();
+            else if (activeTab === 'properties') loadProperties();
+          }}
+          loading={activeTab === 'users' ? loading : activeTab === 'leads' ? leadsLoading : propertiesLoading}
         >
           Обновить
         </Button>
@@ -585,6 +897,20 @@ const AdminPage = () => {
                 {leadsStats.pending > 0 && (
                   <Tag color="orange" style={{ marginLeft: 8 }}>
                     {leadsStats.pending}
+                  </Tag>
+                )}
+              </span>
+            ),
+          },
+          {
+            key: 'properties',
+            label: (
+              <span>
+                <HomeOutlined />
+                Модерация объектов
+                {propertiesStats.pending > 0 && (
+                  <Tag color="orange" style={{ marginLeft: 8 }}>
+                    {propertiesStats.pending}
                   </Tag>
                 )}
               </span>
@@ -811,6 +1137,105 @@ const AdminPage = () => {
         </>
       )}
 
+      {/* Вкладка модерации объектов */}
+      {activeTab === 'properties' && (
+        <>
+          {/* Статистика объектов */}
+          <Row gutter={[16, 16]} className={styles.statsRow}>
+            <Col xs={12} sm={8} md={6}>
+              <Card className={styles.statCard}>
+                <Statistic
+                  title="Всего объектов"
+                  value={propertiesStats.total}
+                  prefix={<HomeOutlined />}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} sm={8} md={6}>
+              <Card className={`${styles.statCard} ${styles.statCardSuspended}`}>
+                <Statistic
+                  title="На модерации"
+                  value={propertiesStats.pending}
+                  valueStyle={{ color: '#D97706' }}
+                  prefix={<ClockCircleOutlined />}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} sm={8} md={6}>
+              <Card className={`${styles.statCard} ${styles.statCardActive}`}>
+                <Statistic
+                  title="Опубликовано"
+                  value={propertiesStats.published}
+                  valueStyle={{ color: '#059669' }}
+                  prefix={<CheckCircleOutlined />}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} sm={8} md={6}>
+              <Card className={styles.statCard}>
+                <Statistic
+                  title="Продано"
+                  value={propertiesStats.sold}
+                  valueStyle={{ color: '#7C3AED' }}
+                  prefix={<DollarOutlined />}
+                />
+              </Card>
+            </Col>
+          </Row>
+
+          {/* Фильтры объектов */}
+          <Card className={styles.filtersCard}>
+            <div className={styles.filters}>
+              <Input
+                placeholder="Поиск по названию, описанию, адресу..."
+                prefix={<SearchOutlined />}
+                value={propertiesSearchText}
+                onChange={(e) => setPropertiesSearchText(e.target.value)}
+                className={styles.searchInput}
+                allowClear
+              />
+              <Select
+                placeholder="Статус"
+                value={propertiesStatusFilter}
+                onChange={setPropertiesStatusFilter}
+                allowClear
+                className={styles.filterSelect}
+                suffixIcon={<FilterOutlined />}
+              >
+                <Option value="PROPERTY_STATUS_NEW">На модерации</Option>
+                <Option value="PROPERTY_STATUS_PUBLISHED">Опубликован</Option>
+                <Option value="PROPERTY_STATUS_SOLD">Продан</Option>
+                <Option value="PROPERTY_STATUS_DELETED">Удалён</Option>
+              </Select>
+            </div>
+          </Card>
+
+          {/* Таблица объектов */}
+          <Card className={styles.tableCard}>
+            <Table
+              columns={propertiesColumns}
+              dataSource={filteredProperties}
+              rowKey="propertyId"
+              loading={propertiesLoading}
+              pagination={{
+                pageSize: 10,
+                showSizeChanger: true,
+                showTotal: (total, range) => `${range[0]}-${range[1]} из ${total}`,
+              }}
+              scroll={{ x: 1100 }}
+              locale={{
+                emptyText: (
+                  <div className={styles.emptyState}>
+                    <HomeOutlined className={styles.emptyIcon} />
+                    <Text type="secondary">Объекты не найдены</Text>
+                  </div>
+                ),
+              }}
+            />
+          </Card>
+        </>
+      )}
+
       {/* Модальное окно изменения статуса пользователя */}
       <Modal
         title={
@@ -975,6 +1400,103 @@ const AdminPage = () => {
               )}
               <Descriptions.Item label="Дата создания">
                 {new Date(selectedLead.createdAt).toLocaleString('ru-RU')}
+              </Descriptions.Item>
+            </Descriptions>
+          </div>
+        )}
+      </Modal>
+
+      {/* Модальное окно просмотра объекта */}
+      <Modal
+        title={
+          <Space>
+            <HomeOutlined />
+            <span>Информация об объекте</span>
+          </Space>
+        }
+        open={propertyDetailVisible}
+        onCancel={() => {
+          setPropertyDetailVisible(false);
+          setSelectedProperty(null);
+        }}
+        footer={
+          selectedProperty?.status === 'PROPERTY_STATUS_NEW' ? (
+            <Space>
+              <Button onClick={() => setPropertyDetailVisible(false)}>
+                Закрыть
+              </Button>
+              <Button
+                danger
+                icon={<CloseOutlined />}
+                onClick={() => {
+                  setPropertyDetailVisible(false);
+                  handleRejectProperty(selectedProperty);
+                }}
+              >
+                Отклонить
+              </Button>
+              <Button
+                type="primary"
+                icon={<CheckOutlined />}
+                onClick={() => {
+                  setPropertyDetailVisible(false);
+                  handleApproveProperty(selectedProperty);
+                }}
+                loading={updatingProperty}
+              >
+                Опубликовать
+              </Button>
+            </Space>
+          ) : (
+            <Button onClick={() => setPropertyDetailVisible(false)}>
+              Закрыть
+            </Button>
+          )
+        }
+        width={600}
+      >
+        {selectedProperty && (
+          <div className={styles.modalContent}>
+            <Descriptions bordered column={1} size="small">
+              <Descriptions.Item label="Название">
+                <Text strong>{selectedProperty.title}</Text>
+              </Descriptions.Item>
+              <Descriptions.Item label="Тип">
+                <Tag color="blue">
+                  {PROPERTY_TYPE_LABELS[selectedProperty.propertyType] || selectedProperty.propertyType}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Описание">
+                {selectedProperty.description || 'Не указано'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Адрес">
+                <EnvironmentOutlined style={{ marginRight: 8 }} />
+                {selectedProperty.address || 'Не указан'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Цена">
+                <Text strong style={{ color: '#137333' }}>
+                  {selectedProperty.price ? `${Number(selectedProperty.price).toLocaleString('ru-RU')} ₽` : 'Не указана'}
+                </Text>
+              </Descriptions.Item>
+              <Descriptions.Item label="Площадь">
+                {selectedProperty.area ? `${selectedProperty.area} м²` : 'Не указана'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Комнат">
+                {selectedProperty.rooms || 'Не указано'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Статус">
+                <Tag
+                  style={{
+                    color: PROPERTY_STATUS_COLORS[selectedProperty.status].text,
+                    backgroundColor: PROPERTY_STATUS_COLORS[selectedProperty.status].bg,
+                    borderColor: PROPERTY_STATUS_COLORS[selectedProperty.status].border,
+                  }}
+                >
+                  {PROPERTY_STATUS_LABELS[selectedProperty.status]}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Дата создания">
+                {new Date(selectedProperty.createdAt).toLocaleString('ru-RU')}
               </Descriptions.Item>
             </Descriptions>
           </div>

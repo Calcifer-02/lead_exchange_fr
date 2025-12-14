@@ -431,6 +431,19 @@ const LeadDetailPage: React.FC = () => {
                 type="primary"
                 size="large"
                 block
+                icon={<HeartOutlined />}
+                onClick={() => navigate(`/leads/${lead.leadId}/matching`)}
+                style={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                }}
+              >
+                Подобрать объекты
+              </Button>
+
+              <Button
+                size="large"
+                block
                 onClick={() => setModalVisible(true)}
               >
                 Начать сделку

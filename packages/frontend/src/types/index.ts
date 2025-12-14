@@ -4,5 +4,6 @@ export * from './file';
 export * from './leads';
 export * from './deals';
 export * from './user';
+export * from './properties';
 // Explicitly re-export ApiError from auth to resolve ambiguity
 export type { ApiError } from './auth';

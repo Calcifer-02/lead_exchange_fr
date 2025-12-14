@@ -7,6 +7,8 @@ import {
   DatabaseOutlined,
   DollarOutlined,
   FundProjectionScreenOutlined,
+  HomeOutlined,
+  ShopOutlined,
   UserAddOutlined,
   SettingOutlined,
 } from '@ant-design/icons';
@@ -30,9 +32,11 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { key: '/dashboard', label: 'Дашборд', icon: <AppstoreFilled /> },
-  { key: '/my-objects', label: 'Мои лиды', icon: <DatabaseOutlined /> },
+  { key: '/my-objects', label: 'Мои объекты', icon: <DatabaseOutlined /> },
   { key: '/leads/new', label: 'Создать лид', icon: <UserAddOutlined /> },
+  { key: '/properties/new', label: 'Новый объект', icon: <HomeOutlined /> },
   { key: '/leads-catalog', label: 'Каталог лидов', icon: <FundProjectionScreenOutlined /> },
+  { key: '/properties-catalog', label: 'Каталог объектов', icon: <ShopOutlined /> },
   { key: '/deals', label: 'Сделки', icon: <ContactsOutlined /> },
   { key: '/finance', label: 'Финансы', icon: <DollarOutlined /> },
   { key: '/admin', label: 'Администрирование', icon: <SettingOutlined />, adminOnly: true },
