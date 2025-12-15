@@ -100,6 +100,39 @@
   font-size: 20px;
 }
 
+/* Highlighted menu item (AI-Matching) */
+.highlightedMenuItem {
+  background: linear-gradient(135deg, rgba(31, 113, 255, 0.1) 0%, rgba(31, 113, 255, 0.05) 100%);
+  border: 1px solid rgba(31, 113, 255, 0.3);
+  position: relative;
+}
+
+.highlightedMenuItem::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 24px;
+  background: #1F71FF;
+  border-radius: 0 3px 3px 0;
+}
+
+.highlightedMenuItem :global(.ant-menu-item-icon) {
+  color: #1F71FF;
+}
+
+.highlightedMenuItem :global(.ant-menu-title-content) {
+  color: #1F71FF;
+  font-weight: 600;
+}
+
+.highlightedMenuItem:hover {
+  background: linear-gradient(135deg, rgba(31, 113, 255, 0.15) 0%, rgba(31, 113, 255, 0.08) 100%) !important;
+  border-color: rgba(31, 113, 255, 0.5);
+}
+
 /* Scrollbar styles */
 .menu::-webkit-scrollbar {
   width: 6px;

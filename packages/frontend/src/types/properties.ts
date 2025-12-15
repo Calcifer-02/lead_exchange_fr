@@ -40,6 +40,18 @@ export interface CreatePropertyRequest {
   propertyType: PropertyType;
 }
 
+export interface UpdatePropertyRequest {
+  title?: string;
+  description?: string;
+  address?: string;
+  price?: string;
+  area?: number;
+  rooms?: number;
+  propertyType?: PropertyType;
+  status?: PropertyStatus;
+  ownerUserId?: string;
+}
+
 export interface PropertyListFilter {
   status?: PropertyStatus;
   ownerUserId?: string;

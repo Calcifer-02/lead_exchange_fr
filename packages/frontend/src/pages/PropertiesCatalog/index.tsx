@@ -176,6 +176,11 @@ const PropertiesCatalogPage = () => {
 
   // Обработчики
   const handlePropertyClick = (property: Property) => {
+    navigate(`/properties/${property.propertyId}`);
+  };
+
+  const handlePropertyPreview = (property: Property, e: React.MouseEvent) => {
+    e.stopPropagation();
     setSelectedProperty(property);
     setModalVisible(true);
   };
@@ -295,12 +300,9 @@ const PropertiesCatalogPage = () => {
             type="link"
             size="small"
             icon={<EyeOutlined />}
-            onClick={(e) => {
-              e.stopPropagation();
-              handlePropertyClick(property);
-            }}
+            onClick={(e) => handlePropertyPreview(property, e)}
           >
-            Подробнее
+            Превью
           </Button>
         </div>
       </Card>
@@ -533,9 +535,22 @@ const PropertiesCatalogPage = () => {
           setSelectedProperty(null);
         }}
         footer={
-          <Button onClick={() => setModalVisible(false)}>
-            Закрыть
-          </Button>
+          <Space>
+            <Button onClick={() => setModalVisible(false)}>
+              Закрыть
+            </Button>
+            <Button
+              type="primary"
+              icon={<EyeOutlined />}
+              onClick={() => {
+                if (selectedProperty) {
+                  navigate(`/properties/${selectedProperty.propertyId}`);
+                }
+              }}
+            >
+              Подробнее
+            </Button>
+          </Space>
         }
         width={700}
       >

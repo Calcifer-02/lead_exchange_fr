@@ -18,8 +18,10 @@ import {
   Dropdown,
   Form,
   Input,
+  InputNumber,
   Modal,
   Segmented,
+  Select,
   Space,
   Table,
   Tabs,
@@ -33,8 +35,8 @@ import type { ColumnsType } from 'antd/es/table';
 import type { MenuProps } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { leadsAPI, propertiesAPI } from '../../api';
-import type { Lead, LeadStatus, Property, PropertyStatus } from '../../types';
-import { LEAD_STATUS_LABELS, LEAD_STATUS_COLORS, PROPERTY_STATUS_LABELS } from '../../types';
+import type { Lead, LeadStatus, Property, PropertyStatus, PropertyType } from '../../types';
+import { LEAD_STATUS_LABELS, LEAD_STATUS_COLORS, PROPERTY_STATUS_LABELS, PROPERTY_TYPE_LABELS } from '../../types';
 import styles from './styles.module.css';
 
 const { Title, Text } = Typography;
@@ -48,6 +50,16 @@ interface EditFormValues {
   contactName: string;
   contactPhone: string;
   contactEmail: string;
+}
+
+interface EditPropertyFormValues {
+  title: string;
+  description: string;
+  address: string;
+  price: number;
+  area: number;
+  rooms: number;
+  propertyType: PropertyType;
 }
 
 // Цвета для статусов объектов
@@ -71,6 +83,13 @@ const MyObjectsPage = () => {
   const [editLoading, setEditLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [form] = Form.useForm<EditFormValues>();
+
+  // Состояния для редактирования объекта
+  const [editPropertyModalVisible, setEditPropertyModalVisible] = useState(false);
+  const [editingProperty, setEditingProperty] = useState<Property | null>(null);
+  const [editPropertyLoading, setEditPropertyLoading] = useState(false);
+  const [propertyForm] = Form.useForm<EditPropertyFormValues>();
+
   const navigate = useNavigate();
 
   // Мемоизируем отфильтрованные лиды для оптимизации
@@ -205,6 +224,66 @@ const MyObjectsPage = () => {
     }
   }, [loadLeads]);
 
+  // Открыть модалку редактирования объекта
+  const handleEditProperty = useCallback((property: Property) => {
+    setEditingProperty(property);
+    propertyForm.setFieldsValue({
+      title: property.title,
+      description: property.description || '',
+      address: property.address || '',
+      price: Number(property.price) || 0,
+      area: property.area || 0,
+      rooms: property.rooms || 0,
+      propertyType: property.propertyType,
+    });
+    setEditPropertyModalVisible(true);
+  }, [propertyForm]);
+
+  // Сохранить изменения объекта
+  const handleSavePropertyEdit = async (values: EditPropertyFormValues) => {
+    if (!editingProperty) return;
+
+    try {
+      setEditPropertyLoading(true);
+      await propertiesAPI.updateProperty(editingProperty.propertyId, {
+        title: values.title,
+        description: values.description,
+        address: values.address,
+        price: values.price.toString(),
+        area: values.area,
+        rooms: values.rooms,
+        propertyType: values.propertyType,
+      });
+      message.success('Объект успешно обновлён');
+      setEditPropertyModalVisible(false);
+      setEditingProperty(null);
+      propertyForm.resetFields();
+      // Перезагружаем список
+      await loadProperties();
+    } catch {
+      message.error('Не удалось обновить объект');
+    } finally {
+      setEditPropertyLoading(false);
+    }
+  };
+
+  // Удалить объект (установить статус DELETED)
+  const handleDeleteProperty = useCallback(async (property: Property) => {
+    try {
+      setDeleteLoading(property.propertyId);
+      await propertiesAPI.updateProperty(property.propertyId, {
+        status: 'PROPERTY_STATUS_DELETED',
+      });
+      message.success('Объект успешно удалён');
+      // Перезагружаем список
+      await loadProperties();
+    } catch {
+      message.error('Не удалось удалить объект');
+    } finally {
+      setDeleteLoading(null);
+    }
+  }, [loadProperties]);
+
   // Просмотр лида
   const handleView = useCallback((lead: Lead) => {
     navigate(`/leads-catalog/${lead.leadId}`);
@@ -269,8 +348,7 @@ const MyObjectsPage = () => {
       label: 'Редактировать',
       onClick: (info) => {
         info.domEvent.stopPropagation();
-        // TODO: Реализовать редактирование объекта
-        message.info('Редактирование объекта в разработке');
+        handleEditProperty(property);
       },
     },
     {
@@ -289,21 +367,11 @@ const MyObjectsPage = () => {
           okText: 'Удалить',
           okType: 'danger',
           cancelText: 'Отмена',
-          onOk: async () => {
-            try {
-              await propertiesAPI.updateProperty(property.propertyId, {
-                status: 'PROPERTY_STATUS_DELETED',
-              });
-              message.success('Объект успешно удалён');
-              await loadProperties();
-            } catch {
-              message.error('Не удалось удалить объект');
-            }
-          },
+          onOk: () => handleDeleteProperty(property),
         });
       },
     },
-  ], [loadProperties]);
+  ], [handleEditProperty, handleDeleteProperty]);
 
   const columns = useMemo<ColumnsType<Lead>>(
     () => [
@@ -719,7 +787,7 @@ const MyObjectsPage = () => {
                             icon={<EditOutlined />}
                             onClick={(e) => {
                               e.stopPropagation();
-                              // TODO: Реализовать редактирование объекта
+                              handleEditProperty(property);
                             }}
                           />
                         </Tooltip>
@@ -738,9 +806,7 @@ const MyObjectsPage = () => {
                                 okText: 'Удалить',
                                 okType: 'danger',
                                 cancelText: 'Отмена',
-                                onOk: () => {
-                                  // TODO: Реализовать удаление объекта
-                                },
+                                onOk: () => handleDeleteProperty(property),
                               });
                             }}
                           />
@@ -834,6 +900,148 @@ const MyObjectsPage = () => {
                 type="primary"
                 htmlType="submit"
                 loading={editLoading}
+              >
+                Сохранить
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Модальное окно редактирования объекта */}
+      <Modal
+        title="Редактирование объекта недвижимости"
+        open={editPropertyModalVisible}
+        onCancel={() => {
+          setEditPropertyModalVisible(false);
+          setEditingProperty(null);
+          propertyForm.resetFields();
+        }}
+        footer={null}
+        width={700}
+        destroyOnHidden
+      >
+        <Form
+          form={propertyForm}
+          layout="vertical"
+          onFinish={handleSavePropertyEdit}
+          style={{ marginTop: 24 }}
+        >
+          <Form.Item
+            name="title"
+            label="Название"
+            rules={[
+              { required: true, message: 'Введите название' },
+              { min: 3, message: 'Минимум 3 символа' },
+            ]}
+          >
+            <Input placeholder="Название объекта" size="large" />
+          </Form.Item>
+
+          <Form.Item
+            name="propertyType"
+            label="Тип объекта"
+            rules={[{ required: true, message: 'Выберите тип объекта' }]}
+          >
+            <Select placeholder="Выберите тип" size="large">
+              <Select.Option value="PROPERTY_TYPE_APARTMENT">
+                {PROPERTY_TYPE_LABELS.PROPERTY_TYPE_APARTMENT}
+              </Select.Option>
+              <Select.Option value="PROPERTY_TYPE_HOUSE">
+                {PROPERTY_TYPE_LABELS.PROPERTY_TYPE_HOUSE}
+              </Select.Option>
+              <Select.Option value="PROPERTY_TYPE_COMMERCIAL">
+                {PROPERTY_TYPE_LABELS.PROPERTY_TYPE_COMMERCIAL}
+              </Select.Option>
+              <Select.Option value="PROPERTY_TYPE_LAND">
+                {PROPERTY_TYPE_LABELS.PROPERTY_TYPE_LAND}
+              </Select.Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="description"
+            label="Описание"
+          >
+            <TextArea
+              placeholder="Описание объекта"
+              rows={4}
+              showCount
+              maxLength={2000}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="address"
+            label="Адрес"
+            rules={[{ required: true, message: 'Введите адрес' }]}
+          >
+            <Input placeholder="Адрес объекта" size="large" />
+          </Form.Item>
+
+          <Space size="large" style={{ display: 'flex', flexWrap: 'wrap' }}>
+            <Form.Item
+              name="price"
+              label="Цена (₽)"
+              rules={[{ required: true, message: 'Укажите цену' }]}
+              style={{ marginBottom: 16 }}
+            >
+              <InputNumber
+                placeholder="Цена"
+                size="large"
+                style={{ width: 180 }}
+                min={0}
+                formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')}
+                parser={(value) => {
+                  const parsed = Number(value?.replace(/\s/g, '') || 0);
+                  return parsed as 0;
+                }}
+              />
+            </Form.Item>
+
+            <Form.Item
+              name="area"
+              label="Площадь (м²)"
+              style={{ marginBottom: 16 }}
+            >
+              <InputNumber
+                placeholder="Площадь"
+                size="large"
+                style={{ width: 140 }}
+                min={0}
+              />
+            </Form.Item>
+
+            <Form.Item
+              name="rooms"
+              label="Количество комнат"
+              style={{ marginBottom: 16 }}
+            >
+              <InputNumber
+                placeholder="Комнаты"
+                size="large"
+                style={{ width: 140 }}
+                min={0}
+                max={50}
+              />
+            </Form.Item>
+          </Space>
+
+          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+            <Space>
+              <Button
+                onClick={() => {
+                  setEditPropertyModalVisible(false);
+                  setEditingProperty(null);
+                  propertyForm.resetFields();
+                }}
+              >
+                Отмена
+              </Button>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={editPropertyLoading}
               >
                 Сохранить
               </Button>

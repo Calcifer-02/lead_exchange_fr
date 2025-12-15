@@ -14,7 +14,6 @@ const AuthPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [loginForm] = Form.useForm();
   const [registerForm] = Form.useForm();
-  const [loginCheckboxError, setLoginCheckboxError] = useState(false);
   const [registerCheckboxError, setRegisterCheckboxError] = useState(false);
 
   // Проверяем, есть ли токен при загрузке страницы
@@ -80,12 +79,7 @@ const AuthPage: React.FC = () => {
     return Promise.resolve();
   };
 
-  const handleLogin = async (values: LoginRequest & { agreeToTerms: boolean }) => {
-    if (!values.agreeToTerms) {
-      message.error('Необходимо согласиться с правилами сервиса');
-      return;
-    }
-
+  const handleLogin = async (values: LoginRequest) => {
     setLoading(true);
     try {
       const response = await authAPI.login({
@@ -216,27 +210,6 @@ const AuthPage: React.FC = () => {
       </Form.Item>
 
       <div className={styles.termsRow}>
-        <Form.Item
-          name="agreeToTerms"
-          valuePropName="checked"
-          initialValue={true}
-          rules={[
-            {
-              validator: (_, value) => {
-                if (value) {
-                  setLoginCheckboxError(false);
-                  return Promise.resolve();
-                }
-                setLoginCheckboxError(true);
-                return Promise.reject(new Error('Необходимо согласие'));
-              },
-            },
-          ]}
-        >
-          <Checkbox style={{ color: loginCheckboxError ? '#ff4d4f' : 'inherit' }}>
-            Согласен с правилами сервиса
-          </Checkbox>
-        </Form.Item>
 
         <div className={styles.forgotPassword}>
           <a href="#">Забыли пароль?</a>

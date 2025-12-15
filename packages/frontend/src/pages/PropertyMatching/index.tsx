@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  ArrowLeftOutlined,
   CloseOutlined,
   EnvironmentOutlined,
   ExpandOutlined,
@@ -11,10 +10,11 @@ import {
   InfoCircleOutlined,
   ReloadOutlined,
   StarFilled,
+  SearchOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
-import { Button, Modal, Spin, Typography, message } from 'antd';
-import { propertiesAPI } from '../../api';
-import { leadsAPI } from '../../api';
+import { Button, Modal, Spin, Typography, message, Select, Card, Empty, Space, Tag } from 'antd';
+import { propertiesAPI, leadsAPI } from '../../api';
 import type { PropertyMatch, Property, Lead } from '../../types';
 import { PROPERTY_TYPE_LABELS } from '../../types';
 import styles from './styles.module.css';
@@ -27,13 +27,19 @@ interface SwipeDirection {
 }
 
 const PropertyMatchingPage = () => {
-  const { leadId } = useParams<{ leadId: string }>();
+  const { leadId: paramLeadId } = useParams<{ leadId: string }>();
   const navigate = useNavigate();
+
+  // Состояния для выбора лида
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(paramLeadId || null);
+  const [leadsLoading, setLeadsLoading] = useState(true);
 
   const [lead, setLead] = useState<Lead | null>(null);
   const [matches, setMatches] = useState<PropertyMatch[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [matchingStarted, setMatchingStarted] = useState(!!paramLeadId);
   const [swipeDirection, setSwipeDirection] = useState<SwipeDirection>({ direction: null, cardIndex: -1 });
   const [likedProperties, setLikedProperties] = useState<Property[]>([]);
   const [passedProperties, setPassedProperties] = useState<Property[]>([]);
@@ -45,40 +51,81 @@ const PropertyMatchingPage = () => {
   const startX = useRef(0);
   const currentX = useRef(0);
   const isDragging = useRef(false);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDraggingState, setIsDraggingState] = useState(false);
 
-  // Загружаем данные лида и матчи
+  // Загружаем список лидов пользователя при монтировании
   useEffect(() => {
-    const loadData = async () => {
-      if (!leadId) {
-        message.error('ID лида не указан');
-        navigate(-1);
-        return;
-      }
-
+    const loadLeads = async () => {
       try {
-        setLoading(true);
-
-        // Загружаем информацию о лиде
-        const leadResponse = await leadsAPI.getLead(leadId);
-        setLead(leadResponse.lead);
-
-        // Загружаем матчи
-        const response = await propertiesAPI.matchProperties({
-          leadId,
-          limit: 20,
-        });
-
-        setMatches(response.matches || []);
+        setLeadsLoading(true);
+        const userId = localStorage.getItem('userId');
+        if (userId) {
+          const response = await leadsAPI.listLeads({ createdUserId: userId });
+          // Фильтруем только опубликованные (промодерированные) лиды
+          const publishedLeads = (response.leads || []).filter(
+            (lead) => lead.status === 'LEAD_STATUS_PUBLISHED'
+          );
+          setLeads(publishedLeads);
+        }
       } catch (error) {
-        console.error('Ошибка загрузки данных:', error);
-        message.error('Не удалось загрузить данные для матчинга');
+        console.error('Ошибка загрузки лидов:', error);
+        message.error('Не удалось загрузить список лидов');
       } finally {
-        setLoading(false);
+        setLeadsLoading(false);
       }
     };
 
-    loadData();
-  }, [leadId, navigate]);
+    loadLeads();
+  }, []);
+
+  // Если есть paramLeadId, сразу запускаем матчинг
+  useEffect(() => {
+    if (paramLeadId) {
+      setSelectedLeadId(paramLeadId);
+      startMatching(paramLeadId);
+    }
+  }, [paramLeadId]);
+
+  // Запуск матчинга
+  const startMatching = async (leadIdToMatch: string) => {
+    if (!leadIdToMatch) {
+      message.warning('Выберите лид для подбора');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setMatchingStarted(true);
+      setCurrentIndex(0);
+      setLikedProperties([]);
+      setPassedProperties([]);
+
+      // Загружаем информацию о лиде
+      const leadResponse = await leadsAPI.getLead(leadIdToMatch);
+      setLead(leadResponse.lead);
+
+      // Загружаем матчи (только опубликованные объекты)
+      const response = await propertiesAPI.matchProperties({
+        leadId: leadIdToMatch,
+        limit: 20,
+        filter: {
+          status: 'PROPERTY_STATUS_PUBLISHED',
+        },
+      });
+
+      setMatches(response.matches || []);
+
+      if (!response.matches || response.matches.length === 0) {
+        message.info('Не найдено подходящих объектов для этого лида');
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки данных:', error);
+      message.error('Не удалось загрузить данные для матчинга');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Обработка свайпа влево (пропустить)
   const handleSwipeLeft = useCallback(() => {
@@ -134,57 +181,76 @@ const PropertyMatchingPage = () => {
   // Обработчики touch событий
   const handleTouchStart = (e: React.TouchEvent) => {
     startX.current = e.touches[0].clientX;
+    currentX.current = e.touches[0].clientX;
     isDragging.current = true;
+    setIsDraggingState(true);
+    setDragOffset(0);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isDragging.current) return;
     currentX.current = e.touches[0].clientX;
+    const diff = currentX.current - startX.current;
+    setDragOffset(diff);
   };
 
   const handleTouchEnd = () => {
     if (!isDragging.current) return;
     isDragging.current = false;
+    setIsDraggingState(false);
 
     const diff = currentX.current - startX.current;
-    const threshold = 100;
+    const threshold = 120; // Увеличенный порог для более контролируемого свайпа
 
     if (diff > threshold) {
       handleSwipeRight();
     } else if (diff < -threshold) {
       handleSwipeLeft();
     }
+
+    // Плавный возврат карточки на место
+    setDragOffset(0);
   };
 
   // Обработчики mouse событий
   const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
     startX.current = e.clientX;
+    currentX.current = e.clientX;
     isDragging.current = true;
+    setIsDraggingState(true);
+    setDragOffset(0);
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging.current) return;
     currentX.current = e.clientX;
+    const diff = currentX.current - startX.current;
+    setDragOffset(diff);
   };
 
   const handleMouseUp = () => {
     if (!isDragging.current) return;
     isDragging.current = false;
+    setIsDraggingState(false);
 
     const diff = currentX.current - startX.current;
-    const threshold = 100;
+    const threshold = 120; // Увеличенный порог для более контролируемого свайпа
 
     if (diff > threshold) {
       handleSwipeRight();
     } else if (diff < -threshold) {
       handleSwipeLeft();
     }
+
+    // Плавный возврат карточки на место
+    setDragOffset(0);
   };
 
   // Клавиатурное управление
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (detailModalVisible) return;
+      if (detailModalVisible || !matchingStarted) return;
 
       switch (e.key) {
         case 'ArrowLeft':
@@ -204,28 +270,26 @@ const PropertyMatchingPage = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleSwipeLeft, handleSwipeRight, handleSuperLike, handleShowDetails, detailModalVisible]);
+  }, [handleSwipeLeft, handleSwipeRight, handleSuperLike, handleShowDetails, detailModalVisible, matchingStarted]);
 
   // Сброс и перезагрузка
   const handleReload = async () => {
+    if (selectedLeadId) {
+      await startMatching(selectedLeadId);
+    }
+  };
+
+  // Вернуться к выбору лида
+  const handleBackToSelection = () => {
+    setMatchingStarted(false);
+    setMatches([]);
+    setLead(null);
     setCurrentIndex(0);
     setLikedProperties([]);
     setPassedProperties([]);
-    setLoading(true);
-
-    try {
-      if (leadId) {
-        const response = await propertiesAPI.matchProperties({
-          leadId,
-          limit: 20,
-        });
-        setMatches(response.matches || []);
-      }
-    } catch (error) {
-      console.error('Ошибка перезагрузки:', error);
-      message.error('Не удалось обновить матчи');
-    } finally {
-      setLoading(false);
+    // Если пришли по прямой ссылке, возвращаемся назад
+    if (paramLeadId) {
+      navigate('/matching');
     }
   };
 
@@ -255,19 +319,39 @@ const PropertyMatchingPage = () => {
   const renderPropertyCard = (match: PropertyMatch, index: number) => {
     const { property, similarity } = match;
     const similarityPercent = Math.round(similarity * 100);
+    const isCurrentCard = index === currentIndex;
+
+    // Вычисляем стили для текущей карточки при перетаскивании
+    const getDragStyle = (): React.CSSProperties => {
+      if (!isCurrentCard || !isDraggingState) return {};
+
+      const rotation = dragOffset * 0.05; // Небольшой поворот при перетаскивании
+      const maxRotation = 15;
+      const clampedRotation = Math.max(-maxRotation, Math.min(maxRotation, rotation));
+
+      return {
+        transform: `translateX(${dragOffset}px) rotate(${clampedRotation}deg)`,
+        transition: 'none', // Отключаем transition при перетаскивании
+      };
+    };
+
+    // Вычисляем прозрачность индикаторов на основе смещения
+    const leftIndicatorOpacity = Math.min(1, Math.max(0, -dragOffset / 120));
+    const rightIndicatorOpacity = Math.min(1, Math.max(0, dragOffset / 120));
 
     return (
       <div
         key={property.propertyId}
-        ref={index === currentIndex ? cardRef : null}
+        ref={isCurrentCard ? cardRef : null}
         className={`${styles.cardWrapper} ${getCardClass(index)}`}
-        onTouchStart={index === currentIndex ? handleTouchStart : undefined}
-        onTouchMove={index === currentIndex ? handleTouchMove : undefined}
-        onTouchEnd={index === currentIndex ? handleTouchEnd : undefined}
-        onMouseDown={index === currentIndex ? handleMouseDown : undefined}
-        onMouseMove={index === currentIndex ? handleMouseMove : undefined}
-        onMouseUp={index === currentIndex ? handleMouseUp : undefined}
-        onMouseLeave={index === currentIndex ? handleMouseUp : undefined}
+        style={getDragStyle()}
+        onTouchStart={isCurrentCard ? handleTouchStart : undefined}
+        onTouchMove={isCurrentCard ? handleTouchMove : undefined}
+        onTouchEnd={isCurrentCard ? handleTouchEnd : undefined}
+        onMouseDown={isCurrentCard ? handleMouseDown : undefined}
+        onMouseMove={isCurrentCard ? handleMouseMove : undefined}
+        onMouseUp={isCurrentCard ? handleMouseUp : undefined}
+        onMouseLeave={isCurrentCard ? handleMouseUp : undefined}
       >
         <div className={styles.propertyCard}>
           {/* Изображение */}
@@ -300,266 +384,333 @@ const PropertyMatchingPage = () => {
               </div>
             </div>
 
-            <p className={styles.cardDescription}>
-              {property.description || 'Описание отсутствует'}
-            </p>
+            {property.description && (
+              <p className={styles.cardDescription}>
+                {property.description.length > 120
+                  ? property.description.substring(0, 120) + '...'
+                  : property.description}
+              </p>
+            )}
           </div>
 
-          {/* Индикаторы свайпа */}
+          {/* Индикаторы свайпа - показываем при перетаскивании */}
           <div
-            className={`${styles.swipeIndicator} ${styles.like} ${
-              swipeDirection.direction === 'right' && swipeDirection.cardIndex === index
-                ? styles.visible
-                : ''
-            }`}
+            className={`${styles.swipeIndicator} ${styles.swipeLeft}`}
+            style={{ opacity: leftIndicatorOpacity }}
           >
-            <HeartFilled /> Нравится
+            <CloseOutlined />
+            <span>Пропустить</span>
           </div>
           <div
-            className={`${styles.swipeIndicator} ${styles.nope} ${
-              swipeDirection.direction === 'left' && swipeDirection.cardIndex === index
-                ? styles.visible
-                : ''
-            }`}
+            className={`${styles.swipeIndicator} ${styles.swipeRight}`}
+            style={{ opacity: rightIndicatorOpacity }}
           >
-            <CloseOutlined /> Пропустить
+            <HeartFilled />
+            <span>Нравится</span>
           </div>
         </div>
       </div>
     );
   };
 
-  // Рендер пустого состояния
-  const renderEmptyState = () => (
-    <div className={styles.emptyState}>
-      {currentIndex >= matches.length && matches.length > 0 ? (
-        <>
-          <HeartOutlined className={styles.emptyIcon} />
-          <div className={styles.emptyTitle}>Все объекты просмотрены!</div>
-          <div className={styles.emptyText}>
-            Вы просмотрели все подходящие объекты. Можете посмотреть понравившиеся или начать заново.
-          </div>
-          <Button
-            icon={<ReloadOutlined />}
-            size="large"
-            className={styles.emptyButton}
-            onClick={handleReload}
-          >
-            Начать заново
-          </Button>
+  // Рендер экрана выбора лида
+  const renderLeadSelection = () => (
+    <div className={styles.selectionContainer}>
+      <Card className={styles.selectionCard}>
+        <div className={styles.selectionHeader}>
+          <ThunderboltOutlined className={styles.selectionIcon} />
+          <Title level={2} className={styles.selectionTitle}>AI-Матчинг объектов</Title>
+          <Text type="secondary" className={styles.selectionSubtitle}>
+            Выберите лид, для которого хотите подобрать подходящие объекты недвижимости
+          </Text>
+        </div>
 
-          {/* Статистика */}
-          {(likedProperties.length > 0 || passedProperties.length > 0) && (
-            <div className={styles.resultsSummary}>
-              <div className={styles.summaryTitle}>Ваши результаты</div>
-              <div className={styles.summaryStats}>
-                <div className={styles.statItem}>
-                  <span className={`${styles.statNumber} ${styles.liked}`}>
-                    {likedProperties.length}
-                  </span>
-                  <span className={styles.statLabel}>Понравилось</span>
-                </div>
-                <div className={styles.statItem}>
-                  <span className={`${styles.statNumber} ${styles.passed}`}>
-                    {passedProperties.length}
-                  </span>
-                  <span className={styles.statLabel}>Пропущено</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </>
-      ) : (
-        <>
-          <HomeOutlined className={styles.emptyIcon} />
-          <div className={styles.emptyTitle}>Нет подходящих объектов</div>
-          <div className={styles.emptyText}>
-            К сожалению, для этого лида пока нет подходящих объектов недвижимости.
-          </div>
-          <Button
-            icon={<ArrowLeftOutlined />}
+        <div className={styles.selectionForm}>
+          <Select
+            placeholder="Выберите лид"
+            value={selectedLeadId}
+            onChange={setSelectedLeadId}
+            loading={leadsLoading}
+            className={styles.leadSelect}
             size="large"
-            className={styles.emptyButton}
-            onClick={() => navigate(-1)}
+            showSearch
+            optionFilterProp="children"
+            filterOption={(input, option) =>
+              (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())
+            }
+            options={leads.map((lead) => ({
+              value: lead.leadId,
+              label: lead.title,
+            }))}
+            notFoundContent={leadsLoading ? <Spin size="small" /> : 'Нет лидов'}
+          />
+
+          <Button
+            type="primary"
+            size="large"
+            icon={<SearchOutlined />}
+            onClick={() => selectedLeadId && startMatching(selectedLeadId)}
+            disabled={!selectedLeadId}
+            loading={loading}
+            className={styles.startButton}
           >
-            Вернуться назад
+            Подобрать объекты
           </Button>
-        </>
-      )}
+        </div>
+
+        {leads.length === 0 && !leadsLoading && (
+          <Empty
+            description="У вас пока нет опубликованных лидов. Лиды должны пройти модерацию перед использованием в матчинге."
+            className={styles.emptyLeads}
+          >
+            <Button type="primary" onClick={() => navigate('/leads/new')}>
+              Создать лид
+            </Button>
+          </Empty>
+        )}
+
+        <div className={styles.selectionHints}>
+          <Text type="secondary">
+            <InfoCircleOutlined /> Используйте клавиши ← → для свайпа, ↑ для суперлайка
+          </Text>
+        </div>
+      </Card>
     </div>
   );
 
+  // Если матчинг не начат, показываем экран выбора лида
+  if (!matchingStarted) {
+    return (
+      <div className={styles.page}>
+        {renderLeadSelection()}
+      </div>
+    );
+  }
+
+  // Загрузка
   if (loading) {
     return (
       <div className={styles.page}>
         <div className={styles.loadingContainer}>
           <Spin size="large" />
-          <div className={styles.loadingText}>Ищем подходящие объекты...</div>
+          <Text className={styles.loadingText}>Ищем подходящие объекты...</Text>
         </div>
       </div>
     );
   }
 
+  // Все карточки просмотрены
+  const isFinished = currentIndex >= matches.length;
+
   return (
     <div className={styles.page}>
-      {/* Заголовок */}
+      {/* Шапка */}
       <div className={styles.header}>
         <Button
-          icon={<ArrowLeftOutlined />}
+          type="text"
+          icon={<CloseOutlined />}
+          onClick={handleBackToSelection}
           className={styles.backButton}
-          onClick={() => navigate(-1)}
         >
           Назад
         </Button>
-        <Title level={4} className={styles.title}>
-          {lead?.title || 'Подбор объектов'}
-        </Title>
-        {matches.length > 0 && currentIndex < matches.length && (
-          <div className={styles.counter}>
-            {currentIndex + 1} / {matches.length}
+
+        <div className={styles.headerInfo}>
+          <Title level={4} className={styles.headerTitle}>
+            {lead?.title || 'Матчинг'}
+          </Title>
+          {!isFinished && (
+            <Text type="secondary">
+              {currentIndex + 1} / {matches.length} объектов
+            </Text>
+          )}
+        </div>
+
+        <Button
+          type="text"
+          icon={<ReloadOutlined />}
+          onClick={handleReload}
+          className={styles.reloadButton}
+        />
+      </div>
+
+      {/* Статистика */}
+      <div className={styles.stats}>
+        <div className={styles.statItem}>
+          <HeartFilled className={styles.likeIcon} />
+          <span>{likedProperties.length}</span>
+        </div>
+        <div className={styles.statItem}>
+          <CloseOutlined className={styles.passIcon} />
+          <span>{passedProperties.length}</span>
+        </div>
+      </div>
+
+      {/* Контейнер карточек */}
+      <div className={styles.cardsContainer}>
+        {matches.length === 0 ? (
+          <div className={styles.noMatches}>
+            <HomeOutlined className={styles.noMatchesIcon} />
+            <Title level={4}>Нет подходящих объектов</Title>
+            <Text type="secondary">
+              Попробуйте изменить параметры лида или добавить больше объектов
+            </Text>
+            <Space style={{ marginTop: 24 }}>
+              <Button onClick={handleBackToSelection}>Выбрать другой лид</Button>
+              <Button type="primary" onClick={handleReload}>
+                Обновить
+              </Button>
+            </Space>
           </div>
+        ) : isFinished ? (
+          <div className={styles.finished}>
+            <Title level={3}>Просмотр завершён!</Title>
+            <Text type="secondary">
+              Вам понравилось {likedProperties.length} объектов
+            </Text>
+
+            {likedProperties.length > 0 && (
+              <div className={styles.likedList}>
+                <Title level={5}>Понравившиеся объекты:</Title>
+                {likedProperties.map((property) => (
+                  <div
+                    key={property.propertyId}
+                    className={styles.likedItem}
+                    onClick={() => navigate(`/properties/${property.propertyId}`)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <HomeOutlined />
+                    <span className={styles.likedItemTitle}>{property.title}</span>
+                    <Tag color="green">{formatPrice(property.price)}</Tag>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <Space style={{ marginTop: 24 }}>
+              <Button onClick={handleBackToSelection}>Выбрать другой лид</Button>
+              <Button type="primary" onClick={handleReload}>
+                Начать заново
+              </Button>
+            </Space>
+          </div>
+        ) : (
+          <>
+            {matches.map((match, index) => renderPropertyCard(match, index))}
+          </>
         )}
       </div>
 
-      {/* Стек карточек */}
-      {matches.length > 0 && currentIndex < matches.length ? (
-        <>
-          <div className={styles.cardStack}>
-            {matches
-              .slice(currentIndex, currentIndex + 3)
-              .map((match, idx) => renderPropertyCard(match, currentIndex + idx))}
-          </div>
+      {/* Кнопки управления */}
+      {!isFinished && matches.length > 0 && (
+        <div className={styles.controls}>
+          <button
+            className={`${styles.controlButton} ${styles.dislikeButton}`}
+            onClick={handleSwipeLeft}
+            title="Пропустить (←)"
+          >
+            <CloseOutlined />
+          </button>
 
-          {/* Кнопки действий */}
-          <div className={styles.actionButtons}>
-            <button
-              className={`${styles.actionButton} ${styles.dislike}`}
-              onClick={handleSwipeLeft}
-              title="Пропустить (←)"
-            >
-              <CloseOutlined />
-            </button>
-            <button
-              className={`${styles.actionButton} ${styles.superlike}`}
-              onClick={handleSuperLike}
-              title="Суперлайк (↑)"
-            >
-              <StarFilled />
-            </button>
-            <button
-              className={`${styles.actionButton} ${styles.like}`}
-              onClick={handleSwipeRight}
-              title="Нравится (→)"
-            >
-              <HeartFilled />
-            </button>
-            <button
-              className={`${styles.actionButton} ${styles.info}`}
-              onClick={handleShowDetails}
-              title="Подробнее (пробел)"
-            >
-              <InfoCircleOutlined />
-            </button>
-          </div>
+          <button
+            className={`${styles.controlButton} ${styles.superlikeButton}`}
+            onClick={handleSuperLike}
+            title="Суперлайк (↑)"
+          >
+            <StarFilled />
+          </button>
 
-          {/* Мини-статистика */}
-          {(likedProperties.length > 0 || passedProperties.length > 0) && (
-            <div className={styles.resultsSummary}>
-              <div className={styles.summaryStats}>
-                <div className={styles.statItem}>
-                  <span className={`${styles.statNumber} ${styles.liked}`}>
-                    {likedProperties.length}
-                  </span>
-                  <span className={styles.statLabel}>Понравилось</span>
-                </div>
-                <div className={styles.statItem}>
-                  <span className={`${styles.statNumber} ${styles.passed}`}>
-                    {passedProperties.length}
-                  </span>
-                  <span className={styles.statLabel}>Пропущено</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </>
-      ) : (
-        renderEmptyState()
+          <button
+            className={`${styles.controlButton} ${styles.infoButton}`}
+            onClick={handleShowDetails}
+            title="Подробнее (Пробел)"
+          >
+            <InfoCircleOutlined />
+          </button>
+
+          <button
+            className={`${styles.controlButton} ${styles.likeButton}`}
+            onClick={handleSwipeRight}
+            title="Нравится (→)"
+          >
+            <HeartOutlined />
+          </button>
+        </div>
       )}
 
-      {/* Модальное окно с деталями */}
+      {/* Модалка деталей */}
       <Modal
+        title={selectedProperty?.title}
         open={detailModalVisible}
         onCancel={() => setDetailModalVisible(false)}
         footer={null}
-        width={500}
+        width={600}
         className={styles.detailModal}
-        destroyOnHidden
       >
         {selectedProperty && (
-          <>
-            <div className={styles.detailHeader}>
-              <HomeOutlined className={styles.detailIcon} />
+          <div className={styles.detailContent}>
+            <div className={styles.detailImage}>
+              <HomeOutlined className={styles.detailPlaceholderIcon} />
             </div>
 
-            <Title level={3} className={styles.detailTitle}>
-              {selectedProperty.title}
-            </Title>
+            <div className={styles.detailInfo}>
+              <div className={styles.detailPrice}>
+                {formatPrice(selectedProperty.price)}
+              </div>
 
-            <Title level={4} className={styles.detailPrice}>
-              {formatPrice(selectedProperty.price)}
-            </Title>
+              <div className={styles.detailAddress}>
+                <EnvironmentOutlined />
+                <span>{selectedProperty.address || 'Адрес не указан'}</span>
+              </div>
 
-            <div className={styles.detailAddress}>
-              <EnvironmentOutlined />
-              <span>{selectedProperty.address || 'Адрес не указан'}</span>
+              <div className={styles.detailFeatures}>
+                <div className={styles.detailFeature}>
+                  <span className={styles.featureLabel}>Тип</span>
+                  <span className={styles.featureValue}>
+                    {PROPERTY_TYPE_LABELS[selectedProperty.propertyType]}
+                  </span>
+                </div>
+                <div className={styles.detailFeature}>
+                  <span className={styles.featureLabel}>Площадь</span>
+                  <span className={styles.featureValue}>{selectedProperty.area} м²</span>
+                </div>
+                <div className={styles.detailFeature}>
+                  <span className={styles.featureLabel}>Комнаты</span>
+                  <span className={styles.featureValue}>{selectedProperty.rooms}</span>
+                </div>
+              </div>
+
+              {selectedProperty.description && (
+                <div className={styles.detailDescription}>
+                  <h4>Описание</h4>
+                  <p>{selectedProperty.description}</p>
+                </div>
+              )}
             </div>
-
-            <div className={styles.detailFeatures}>
-              <div className={styles.feature}>
-                <ExpandOutlined className={styles.featureIcon} />
-                <span>{selectedProperty.area} м²</span>
-              </div>
-              <div className={styles.feature}>
-                <HomeOutlined className={styles.featureIcon} />
-                <span>{selectedProperty.rooms} комн.</span>
-              </div>
-              <div className={styles.feature}>
-                <Text type="secondary">
-                  {PROPERTY_TYPE_LABELS[selectedProperty.propertyType]}
-                </Text>
-              </div>
-            </div>
-
-            <Text className={styles.detailDescription}>
-              {selectedProperty.description || 'Описание отсутствует'}
-            </Text>
 
             <div className={styles.detailActions}>
               <Button
-                type="primary"
-                icon={<HeartFilled />}
-                size="large"
-                block
-                onClick={() => {
-                  handleSwipeRight();
-                  setDetailModalVisible(false);
-                }}
-              >
-                Нравится
-              </Button>
-              <Button
+                danger
                 icon={<CloseOutlined />}
-                size="large"
-                block
                 onClick={() => {
-                  handleSwipeLeft();
                   setDetailModalVisible(false);
+                  handleSwipeLeft();
                 }}
               >
                 Пропустить
               </Button>
+              <Button
+                type="primary"
+                icon={<HeartFilled />}
+                onClick={() => {
+                  setDetailModalVisible(false);
+                  handleSwipeRight();
+                }}
+              >
+                Нравится
+              </Button>
             </div>
-          </>
+          </div>
         )}
       </Modal>
     </div>

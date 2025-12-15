@@ -92,6 +92,9 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   transition: all 0.3s ease;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .propertyCard:hover {
@@ -102,6 +105,9 @@
 
 .propertyCard :global(.ant-card-body) {
   padding: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 .cardHeader {
@@ -127,6 +133,7 @@
 
 .cardBody {
   padding: 16px;
+  flex: 1;
 }
 
 .typeTag {
@@ -194,6 +201,7 @@
   padding: 12px 16px;
   border-top: 1px solid #f0f0f0;
   background: #fafafa;
+  margin-top: auto;
 }
 
 .cardDate {

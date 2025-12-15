@@ -11,6 +11,7 @@ import {
   ShopOutlined,
   UserAddOutlined,
   SettingOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { userAPI } from '../../../api';
@@ -28,15 +29,17 @@ interface NavItem {
   label: string;
   icon: React.ReactNode;
   adminOnly?: boolean;
+  highlighted?: boolean;
 }
 
 const navItems: NavItem[] = [
   { key: '/dashboard', label: 'Дашборд', icon: <AppstoreFilled /> },
   { key: '/my-objects', label: 'Мои объекты', icon: <DatabaseOutlined /> },
-  { key: '/leads/new', label: 'Создать лид', icon: <UserAddOutlined /> },
+  { key: '/leads/new', label: 'Новый лид', icon: <UserAddOutlined /> },
   { key: '/properties/new', label: 'Новый объект', icon: <HomeOutlined /> },
   { key: '/leads-catalog', label: 'Каталог лидов', icon: <FundProjectionScreenOutlined /> },
   { key: '/properties-catalog', label: 'Каталог объектов', icon: <ShopOutlined /> },
+  { key: '/matching', label: 'AI-Матчинг', icon: <ThunderboltOutlined />, highlighted: true },
   { key: '/deals', label: 'Сделки', icon: <ContactsOutlined /> },
   { key: '/finance', label: 'Финансы', icon: <DollarOutlined /> },
   { key: '/admin', label: 'Администрирование', icon: <SettingOutlined />, adminOnly: true },
@@ -69,6 +72,7 @@ const AppSidebarComponent = ({ onNavigate }: SidebarProps) => {
       key: item.key,
       icon: item.icon,
       label: item.label,
+      className: item.highlighted ? styles.highlightedMenuItem : undefined,
     }));
 
   const selectedKey =

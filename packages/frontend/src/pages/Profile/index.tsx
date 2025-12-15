@@ -21,7 +21,7 @@ import {
   Tag,
   Divider,
 } from 'antd';
-import { userAPI, leadsAPI, dealsAPI } from '../../api';
+import { userAPI, leadsAPI, dealsAPI, propertiesAPI } from '../../api';
 import type { User, UpdateProfileRequest } from '../../types/user';
 import type { Deal } from '../../types/deals';
 import { USER_ROLE_LABELS, USER_STATUS_LABELS } from '../../types/user';
@@ -31,6 +31,9 @@ const { Title, Text } = Typography;
 
 interface UserStats {
   totalLeads: number;
+  publishedLeads: number;
+  totalProperties: number;
+  publishedProperties: number;
   activeDeals: number;
   completedDeals: number;
   totalRevenue: number;
@@ -43,6 +46,9 @@ const ProfilePage = () => {
   const [editing, setEditing] = useState(false);
   const [stats, setStats] = useState<UserStats>({
     totalLeads: 0,
+    publishedLeads: 0,
+    totalProperties: 0,
+    publishedProperties: 0,
     activeDeals: 0,
     completedDeals: 0,
     totalRevenue: 0,
@@ -87,14 +93,26 @@ const ProfilePage = () => {
   // Загрузка статистики пользователя
   const loadUserStats = async (userId: string) => {
     try {
-      // Загружаем лиды созданные пользователем и сделки где пользователь участник
-      const [leadsResponse, sellerDeals, buyerDeals] = await Promise.all([
+      // Загружаем лиды, объекты и сделки пользователя
+      const [leadsResponse, propertiesResponse, sellerDeals, buyerDeals] = await Promise.all([
         leadsAPI.listLeads({ createdUserId: userId }),
+        propertiesAPI.getProperties({ createdUserId: userId }),
         dealsAPI.fetchDeals({ sellerUserId: userId }),
         dealsAPI.fetchDeals({ buyerUserId: userId }),
       ]);
 
       const userLeads = leadsResponse.leads || [];
+      const userProperties = propertiesResponse || [];
+
+      // Считаем опубликованные лиды
+      const publishedLeads = userLeads.filter(
+        (lead) => lead.status === 'LEAD_STATUS_PUBLISHED'
+      );
+
+      // Считаем опубликованные объекты
+      const publishedProperties = userProperties.filter(
+        (property) => property.status === 'PROPERTY_STATUS_PUBLISHED'
+      );
 
       // Объединяем сделки (убираем дубликаты если есть)
       const allUserDeals = [...sellerDeals, ...buyerDeals];
@@ -121,6 +139,9 @@ const ProfilePage = () => {
 
       setStats({
         totalLeads: userLeads.length,
+        publishedLeads: publishedLeads.length,
+        totalProperties: userProperties.length,
+        publishedProperties: publishedProperties.length,
         activeDeals: activeDeals.length,
         completedDeals: completedDeals.length,
         totalRevenue,
@@ -136,12 +157,24 @@ const ProfilePage = () => {
       const values = await form.validateFields();
       setSaving(true);
 
-      const updateData: UpdateProfileRequest = {
-        firstName: values.firstName,
-        lastName: values.lastName,
-        phone: values.phone,
-        agencyName: values.agencyName,
-      };
+      // Формируем объект только с непустыми значениями
+      const updateData: UpdateProfileRequest = {};
+
+      if (values.firstName && values.firstName.trim()) {
+        updateData.firstName = values.firstName.trim();
+      }
+      if (values.lastName && values.lastName.trim()) {
+        updateData.lastName = values.lastName.trim();
+      }
+      if (values.phone && values.phone.trim()) {
+        // Отправляем телефон без форматирования
+        updateData.phone = values.phone.replace(/[^\d+]/g, '');
+      }
+      if (values.agencyName && values.agencyName.trim()) {
+        updateData.agencyName = values.agencyName.trim();
+      }
+
+      console.log('Отправляем данные для обновления профиля:', updateData);
 
       const updatedUser = await userAPI.updateProfile(updateData);
       setUser(updatedUser);
@@ -153,8 +186,16 @@ const ProfilePage = () => {
 
       message.success('Профиль успешно обновлён');
       setEditing(false);
-    } catch {
-      message.error('Не удалось сохранить изменения');
+    } catch (error) {
+      console.error('Ошибка при сохранении профиля:', error);
+      // Попробуем получить детали ошибки
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string } } };
+        const errorMessage = axiosError.response?.data?.message || 'Не удалось сохранить изменения';
+        message.error(errorMessage);
+      } else {
+        message.error('Не удалось сохранить изменения');
+      }
     } finally {
       setSaving(false);
     }
@@ -401,7 +442,13 @@ const ProfilePage = () => {
         <div className={styles.statsGrid}>
           <div className={styles.statCard}>
             <div className={styles.statValue}>{stats.totalLeads}</div>
-            <div className={styles.statLabel}>Создано лидов</div>
+            <div className={styles.statLabel}>Всего лидов</div>
+            <div className={styles.statSub}>{stats.publishedLeads} опубликовано</div>
+          </div>
+          <div className={styles.statCard}>
+            <div className={styles.statValue}>{stats.totalProperties}</div>
+            <div className={styles.statLabel}>Всего объектов</div>
+            <div className={styles.statSub}>{stats.publishedProperties} опубликовано</div>
           </div>
           <div className={styles.statCard}>
             <div className={styles.statValue}>{stats.activeDeals}</div>
