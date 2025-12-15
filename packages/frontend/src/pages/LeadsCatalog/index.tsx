@@ -351,16 +351,16 @@ const LeadsCatalogPage = () => {
     const price = lead.parsedRequirement.preferredPrice || lead.parsedRequirement.price;
 
     return (
-      <Badge.Ribbon
-        key={lead.leadId}
-        text={LEAD_STATUS_LABELS[lead.status]}
-        color={getStatusTagColor(lead.status)}
-      >
-        <Card
-          className={styles.leadCard}
-          hoverable
-          onClick={() => handleLeadClick(lead)}
+      <div key={lead.leadId} className={styles.leadCardWrapper}>
+        <Badge.Ribbon
+          text={LEAD_STATUS_LABELS[lead.status]}
+          color={getStatusTagColor(lead.status)}
         >
+          <Card
+            className={styles.leadCard}
+            hoverable
+            onClick={() => handleLeadClick(lead)}
+          >
           <div className={styles.cardHeader}>
             <FileTextOutlined className={styles.leadIcon} />
             <div className={styles.cardActions}>
@@ -391,13 +391,15 @@ const LeadsCatalogPage = () => {
             {lead.description || 'Описание отсутствует'}
           </Paragraph>
 
-          {price && (
-            <div className={styles.leadPrice}>
-              {formatPrice(price)}
-            </div>
-          )}
+          <div className={styles.priceContainer}>
+            {price && (
+              <div className={styles.leadPrice}>
+                {formatPrice(price)}
+              </div>
+            )}
+          </div>
 
-          <Divider style={{ margin: '12px 0' }} />
+          <Divider style={{ margin: '12px 0', flexShrink: 0 }} />
 
           <div className={styles.contactInfo}>
             <div className={styles.contactItem}>
@@ -408,12 +410,16 @@ const LeadsCatalogPage = () => {
               <PhoneOutlined />
               <Text ellipsis>{lead.contactPhone}</Text>
             </div>
-            {lead.contactEmail && (
-              <div className={styles.contactItem}>
-                <MailOutlined />
-                <Text ellipsis>{lead.contactEmail}</Text>
-              </div>
-            )}
+            <div className={styles.contactItem}>
+              {lead.contactEmail ? (
+                <>
+                  <MailOutlined />
+                  <Text ellipsis>{lead.contactEmail}</Text>
+                </>
+              ) : (
+                <Text type="secondary" style={{ fontSize: 13 }}>&nbsp;</Text>
+              )}
+            </div>
           </div>
 
           <div className={styles.cardFooter}>
@@ -449,6 +455,7 @@ const LeadsCatalogPage = () => {
           </div>
         </Card>
       </Badge.Ribbon>
+      </div>
     );
   };
 

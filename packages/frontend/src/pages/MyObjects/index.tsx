@@ -194,7 +194,7 @@ const MyObjectsPage = () => {
         title: values.title,
         description: values.description,
       });
-      message.success('Лид успешно обновлён');
+      message.success('Лид успешно обновлён. Данные для матчинга обновляются...');
       setEditModalVisible(false);
       setEditingLead(null);
       form.resetFields();
@@ -254,7 +254,7 @@ const MyObjectsPage = () => {
         rooms: values.rooms,
         propertyType: values.propertyType,
       });
-      message.success('Объект успешно обновлён');
+      message.success('Объект успешно обновлён. Данные для матчинга обновляются...');
       setEditPropertyModalVisible(false);
       setEditingProperty(null);
       propertyForm.resetFields();
