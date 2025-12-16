@@ -91,6 +91,7 @@ const LeadDetailPage: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isPurchaser, setIsPurchaser] = useState(false); // Покупатель лида (имеет завершённую сделку)
 
   // Получение ID текущего пользователя
   useEffect(() => {
@@ -125,6 +126,29 @@ const LeadDetailPage: React.FC = () => {
 
     fetchLead();
   }, [id]);
+
+  // Проверяем, является ли текущий пользователь покупателем этого лида
+  useEffect(() => {
+    const checkPurchaseStatus = async () => {
+      if (!id || !currentUserId) return;
+
+      try {
+        // Получаем завершённые сделки по этому лиду, где текущий пользователь - покупатель
+        const deals = await dealsAPI.fetchDeals({
+          leadId: id,
+          buyerUserId: currentUserId,
+          status: 'DEAL_STATUS_COMPLETED',
+        });
+
+        // Если есть хотя бы одна завершённая сделка - пользователь купил лид
+        setIsPurchaser(deals.length > 0);
+      } catch (err) {
+        console.error('Error checking purchase status:', err);
+      }
+    };
+
+    checkPurchaseStatus();
+  }, [id, currentUserId]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ru-RU', {
@@ -167,8 +191,10 @@ const LeadDetailPage: React.FC = () => {
     if (currentUserId && lead.ownerUserId === currentUserId) {
       return true;
     }
-    // Для купленных лидов - контакты доступны покупателю
-    // TODO: Здесь нужна проверка через API - является ли текущий пользователь покупателем
+    // Покупатель лида (имеет завершённую сделку) видит контакты
+    if (isPurchaser) {
+      return true;
+    }
     return false;
   };
 
@@ -362,6 +388,12 @@ const LeadDetailPage: React.FC = () => {
                     <Tag color={getStatusColor(lead.status)}>
                       {getStatusLabel(lead.status)}
                     </Tag>
+                    {isOwner && (
+                      <Tag color="blue">Ваш лид</Tag>
+                    )}
+                    {isPurchaser && !isOwner && (
+                      <Tag color="green">Вы купили этот лид</Tag>
+                    )}
                     <Text type="secondary">
                       <CalendarOutlined /> Создан: {formatDate(lead.createdAt)}
                     </Text>

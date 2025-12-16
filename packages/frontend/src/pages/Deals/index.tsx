@@ -35,6 +35,7 @@ const DealsPage: React.FC = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [paymentLoading, setPaymentLoading] = useState<string | null>(null);
   const [completingDeal, setCompletingDeal] = useState(false);
+  const [checkingPayment, setCheckingPayment] = useState<string | null>(null); // ID сделки, для которой проверяется платёж
   // Получаем уникальные ID лидов из сделок
   const leadIds = useMemo(() => {
     return Array.from(new Set(deals.map(deal => deal.leadId)));
@@ -68,19 +69,14 @@ const DealsPage: React.FC = () => {
   useEffect(() => {
     const checkPendingPayment = async () => {
       const pendingPaymentStr = localStorage.getItem('pendingPayment');
-      console.log('Checking pending payment:', pendingPaymentStr);
-
       if (!pendingPaymentStr) return;
 
       try {
         const pendingPayment = JSON.parse(pendingPaymentStr);
         const { paymentId, dealId, timestamp } = pendingPayment;
 
-        console.log('Pending payment data:', { paymentId, dealId, timestamp });
-
         // Проверяем, что платеж не старше 1 часа
         if (Date.now() - timestamp > 3600000) {
-          console.log('Payment too old, removing');
           localStorage.removeItem('pendingPayment');
           return;
         }
@@ -89,19 +85,15 @@ const DealsPage: React.FC = () => {
         message.loading('Проверка статуса оплаты...', 0);
 
         // Проверяем статус платежа
-        console.log('Fetching payment status for:', paymentId);
         const payment = await paymentAPI.getPaymentStatus(paymentId);
-        console.log('Payment status:', payment);
 
         if (payment.status === 'succeeded' && payment.paid) {
-          console.log('Payment succeeded, completing deal:', dealId);
           // Платеж успешен - завершаем сделку
           try {
             const completedDeal = await dealsAPI.completeDeal(dealId);
-            console.log('Deal completed:', completedDeal);
 
             message.destroy();
-            message.success('Оплата прошла успешно! Сделка завершена, лид передан вам.');
+            message.success('Оплата прошла успешно! Теперь вам доступны контакты лида.');
 
             // Обновляем локальное состояние
             setDeals(prevDeals =>
@@ -109,36 +101,34 @@ const DealsPage: React.FC = () => {
                 d.dealId === dealId ? completedDeal : d
               )
             );
+            localStorage.removeItem('pendingPayment');
           } catch {
             message.destroy();
-            message.warning('Оплата прошла, но не удалось завершить сделку автоматически. Обратитесь в поддержку.');
+            message.warning('Оплата прошла, но не удалось завершить сделку автоматически. Нажмите "Проверить оплату".');
           }
         } else if (payment.status === 'canceled') {
           message.destroy();
           message.error('Платеж был отменён');
+          localStorage.removeItem('pendingPayment');
         } else if (payment.status === 'pending') {
           message.destroy();
-          message.info('Платеж в обработке. Статус сделки обновится автоматически.');
+          message.info('Платеж в обработке. Нажмите "Проверить оплату" через несколько секунд.');
         } else {
           message.destroy();
         }
-
-        // Удаляем данные о платеже из localStorage
-        localStorage.removeItem('pendingPayment');
       } catch (err) {
         console.error('Error checking payment status:', err);
         message.destroy();
-        // Не показываем ошибку пользователю, если просто не удалось проверить
       } finally {
         setCompletingDeal(false);
       }
     };
 
-    // Запускаем проверку только после загрузки сделок
-    if (!loading && deals.length >= 0) {
+    // Запускаем проверку только после загрузки сделок и получения userId
+    if (!loading && currentUserId) {
       checkPendingPayment();
     }
-  }, [loading]);
+  }, [loading, currentUserId]);
 
   const filterMyDeals = (dealsList: Deal[]): Deal[] => {
     if (!currentUserId) return [];
@@ -153,6 +143,52 @@ const DealsPage: React.FC = () => {
     return myDeals;
   };
 
+  // Функция для ручной проверки статуса платежа
+  const handleCheckPaymentStatus = async (dealId: string) => {
+    // Ищем платёж в localStorage
+    const pendingPaymentStr = localStorage.getItem('pendingPayment');
+    if (!pendingPaymentStr) {
+      message.info('Нет информации о платеже. Попробуйте оплатить снова.');
+      return;
+    }
+
+    try {
+      const pendingPayment = JSON.parse(pendingPaymentStr);
+      if (pendingPayment.dealId !== dealId) {
+        message.info('Платёж относится к другой сделке.');
+        return;
+      }
+
+      setCheckingPayment(dealId);
+      const payment = await paymentAPI.getPaymentStatus(pendingPayment.paymentId);
+
+      if (payment.status === 'succeeded' && payment.paid) {
+        // Завершаем сделку
+        try {
+          const completedDeal = await dealsAPI.completeDeal(dealId);
+          message.success('Оплата подтверждена! Контакты лида теперь вам доступны.');
+          setDeals(prevDeals =>
+            prevDeals.map(d => d.dealId === dealId ? completedDeal : d)
+          );
+          localStorage.removeItem('pendingPayment');
+        } catch {
+          message.error('Не удалось завершить сделку.');
+        }
+      } else if (payment.status === 'pending') {
+        message.info('Платёж ещё обрабатывается. Попробуйте через несколько секунд.');
+      } else if (payment.status === 'canceled') {
+        message.error('Платёж был отменён.');
+        localStorage.removeItem('pendingPayment');
+      } else {
+        message.info(`Статус платежа: ${payment.status}`);
+      }
+    } catch (err) {
+      console.error('Error checking payment:', err);
+      message.error('Не удалось проверить статус платежа.');
+    } finally {
+      setCheckingPayment(null);
+    }
+  };
 
   // Функция для получения заголовка лида
   const getLeadTitle = (leadId: string): string => {
@@ -310,6 +346,17 @@ const DealsPage: React.FC = () => {
               icon={<DollarOutlined />}
             >
               Оплатить {formatPrice(deal.price)}
+            </Button>
+          ),
+
+          // Кнопка проверки статуса платежа (если есть pending платёж)
+          isBuyer && deal.status === 'DEAL_STATUS_ACCEPTED' && (
+            <Button
+              className={styles.actionButton}
+              loading={checkingPayment === deal.dealId}
+              onClick={() => handleCheckPaymentStatus(deal.dealId)}
+            >
+              Проверить оплату
             </Button>
           ),
         ].filter(Boolean)}
