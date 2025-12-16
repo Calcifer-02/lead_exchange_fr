@@ -104,7 +104,7 @@ const AuthPage: React.FC = () => {
 
       console.log('Отправляем данные регистрации:', registerData);
 
-      await authAPI.register(registerData as RegisterRequest);
+      await authAPI.register(registerData as unknown as RegisterRequest);
       message.success('Регистрация успешна! Теперь вы можете войти.');
 
       // Сохраняем данные профиля для будущего использования
