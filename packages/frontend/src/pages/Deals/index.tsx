@@ -65,11 +65,16 @@ const DealsPage: React.FC = () => {
     setCurrentUserId(localStorage.getItem('userId'));
   }, []);
 
-  // Проверка статуса платежа после возврата с ЮKassa
+  // Проверка статуса платежа после возврата с ЮKassa (с polling)
   useEffect(() => {
-    const checkPendingPayment = async () => {
+    let pollCount = 0;
+    const maxPolls = 10; // Максимум 10 попыток
+    const pollInterval = 3000; // 3 секунды между попытками
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const checkPendingPayment = async (): Promise<boolean> => {
       const pendingPaymentStr = localStorage.getItem('pendingPayment');
-      if (!pendingPaymentStr) return;
+      if (!pendingPaymentStr) return true; // Завершаем polling
 
       try {
         const pendingPayment = JSON.parse(pendingPaymentStr);
@@ -78,11 +83,8 @@ const DealsPage: React.FC = () => {
         // Проверяем, что платеж не старше 1 часа
         if (Date.now() - timestamp > 3600000) {
           localStorage.removeItem('pendingPayment');
-          return;
+          return true;
         }
-
-        setCompletingDeal(true);
-        message.loading('Проверка статуса оплаты...', 0);
 
         // Проверяем статус платежа
         const payment = await paymentAPI.getPaymentStatus(paymentId);
@@ -102,32 +104,67 @@ const DealsPage: React.FC = () => {
               )
             );
             localStorage.removeItem('pendingPayment');
-          } catch {
+            return true; // Завершаем polling
+          } catch (completionError) {
+            console.error('Error completing deal:', completionError);
             message.destroy();
             message.warning('Оплата прошла, но не удалось завершить сделку автоматически. Нажмите "Проверить оплату".');
+            localStorage.removeItem('pendingPayment');
+            return true;
           }
         } else if (payment.status === 'canceled') {
           message.destroy();
           message.error('Платеж был отменён');
           localStorage.removeItem('pendingPayment');
+          return true;
         } else if (payment.status === 'pending') {
-          message.destroy();
-          message.info('Платеж в обработке. Нажмите "Проверить оплату" через несколько секунд.');
-        } else {
-          message.destroy();
+          // Платёж ещё обрабатывается - продолжаем polling
+          return false;
         }
+        return true;
       } catch (err) {
         console.error('Error checking payment status:', err);
-        message.destroy();
-      } finally {
-        setCompletingDeal(false);
+        return false; // Продолжаем попытки при ошибке сети
       }
+    };
+
+    const startPolling = async () => {
+      const pendingPaymentStr = localStorage.getItem('pendingPayment');
+      if (!pendingPaymentStr) return;
+
+      setCompletingDeal(true);
+      message.loading('Проверка статуса оплаты...', 0);
+
+      const poll = async () => {
+        pollCount++;
+        const shouldStop = await checkPendingPayment();
+
+        if (shouldStop || pollCount >= maxPolls) {
+          message.destroy();
+          setCompletingDeal(false);
+          if (pollCount >= maxPolls && !shouldStop) {
+            message.info('Платёж обрабатывается. Нажмите "Проверить оплату" позже.');
+          }
+        } else {
+          // Продолжаем polling
+          timeoutId = setTimeout(poll, pollInterval);
+        }
+      };
+
+      poll();
     };
 
     // Запускаем проверку только после загрузки сделок и получения userId
     if (!loading && currentUserId) {
-      checkPendingPayment();
+      startPolling();
     }
+
+    // Очистка при размонтировании
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, [loading, currentUserId]);
 
   const filterMyDeals = (dealsList: Deal[]): Deal[] => {

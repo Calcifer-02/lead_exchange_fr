@@ -42,42 +42,6 @@ const AuthPage: React.FC = () => {
     }
   };
 
-  const formatPhoneNumber = (value: string) => {
-    if (!value) return value;
-
-    // Удаляем все нецифровые символы
-    const phoneNumber = value.replace(/[^\d]/g, '');
-
-    // Ограничиваем 11 цифрами
-    const limitedNumber = phoneNumber.slice(0, 11);
-
-    // Форматируем номер
-    if (limitedNumber.length === 0) return '';
-    if (limitedNumber.length === 1) return `+7`;
-    if (limitedNumber.length <= 4) return `+7 (${limitedNumber.slice(1)}`;
-    if (limitedNumber.length <= 7) return `+7 (${limitedNumber.slice(1, 4)}) ${limitedNumber.slice(4)}`;
-    if (limitedNumber.length <= 9) return `+7 (${limitedNumber.slice(1, 4)}) ${limitedNumber.slice(4, 7)}-${limitedNumber.slice(7)}`;
-    return `+7 (${limitedNumber.slice(1, 4)}) ${limitedNumber.slice(4, 7)}-${limitedNumber.slice(7, 9)}-${limitedNumber.slice(9, 11)}`;
-  };
-
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatPhoneNumber(e.target.value);
-    registerForm.setFieldsValue({ phone: formatted });
-  };
-
-  const validatePhone = (_: unknown, value: string) => {
-    if (!value) {
-      return Promise.reject(new Error('Введите телефон'));
-    }
-    const digits = value.replace(/[^\d]/g, '');
-    if (digits.length !== 11) {
-      return Promise.reject(new Error('Телефон должен содержать 11 цифр'));
-    }
-    if (!digits.startsWith('7')) {
-      return Promise.reject(new Error('Телефон должен начинаться с +7'));
-    }
-    return Promise.resolve();
-  };
 
   const handleLogin = async (values: LoginRequest) => {
     setLoading(true);
@@ -123,27 +87,32 @@ const AuthPage: React.FC = () => {
 
     setLoading(true);
     try {
-      // Убираем форматирование из телефона, оставляем только цифры
-      const phoneDigits = values.phone.replace(/[^\d]/g, '');
-
-      const registerData = {
+      const registerData: Record<string, string> = {
         email: values.email,
         password: values.password,
         firstName: values.firstName,
         lastName: values.lastName,
-        phone: phoneDigits, // Отправляем только цифры
-        agencyName: values.agencyName,
       };
+
+      // Добавляем опциональные поля только если они заполнены
+      if (values.phone) {
+        registerData.phone = values.phone.replace(/[^\d+]/g, ''); // Оставляем только цифры и +
+      }
+      if (values.agencyName) {
+        registerData.agencyName = values.agencyName;
+      }
 
       console.log('Отправляем данные регистрации:', registerData);
 
-      await authAPI.register(registerData);
+      await authAPI.register(registerData as RegisterRequest);
       message.success('Регистрация успешна! Теперь вы можете войти.');
 
       // Сохраняем данные профиля для будущего использования
       localStorage.setItem('userFirstName', values.firstName);
       localStorage.setItem('userLastName', values.lastName);
-      localStorage.setItem('userPhone', phoneDigits);
+      if (values.phone) {
+        localStorage.setItem('userPhone', values.phone);
+      }
 
       // Переносим email и пароль в форму входа
       loginForm.setFieldsValue({
@@ -262,7 +231,7 @@ const AuthPage: React.FC = () => {
         name="password"
         rules={[
           { required: true, message: 'Введите пароль' },
-          { min: 6, message: 'Минимум 6 символов' },
+          { min: 8, message: 'Минимум 8 символов' },
         ]}
       >
         <Input.Password
@@ -275,39 +244,48 @@ const AuthPage: React.FC = () => {
 
       <Form.Item
         name="firstName"
-        rules={[{ required: true, message: 'Введите имя' }]}
+        rules={[
+          { required: true, message: 'Введите имя' },
+          { max: 64, message: 'Максимум 64 символа' },
+        ]}
       >
-        <Input placeholder="Имя" size="large" autoComplete="given-name" />
+        <Input placeholder="Имя" size="large" autoComplete="given-name" maxLength={64} />
       </Form.Item>
 
       <Form.Item
         name="lastName"
-        rules={[{ required: true, message: 'Введите фамилию' }]}
+        rules={[
+          { required: true, message: 'Введите фамилию' },
+          { max: 64, message: 'Максимум 64 символа' },
+        ]}
       >
-        <Input placeholder="Фамилия" size="large" autoComplete="family-name" />
+        <Input placeholder="Фамилия" size="large" autoComplete="family-name" maxLength={64} />
       </Form.Item>
 
       <Form.Item
         name="phone"
-        rules={[{ validator: validatePhone }]}
+        rules={[
+          {
+            pattern: /^\+?[0-9]{10,15}$/,
+            message: 'Введите корректный телефон (10-15 цифр)',
+          },
+        ]}
       >
         <Input
           prefix={<PhoneOutlined />}
-          placeholder="+7 (XXX) XXX-XX-XX"
+          placeholder="+7XXXXXXXXXX"
           size="large"
-          onChange={handlePhoneChange}
-          maxLength={18}
+          maxLength={16}
           autoComplete="tel"
         />
       </Form.Item>
 
       <Form.Item
         name="agencyName"
-        rules={[{ required: true, message: 'Введите название агентства' }]}
       >
         <Input
           prefix={<HomeOutlined />}
-          placeholder="Название агентства"
+          placeholder="Название агентства (опционально)"
           size="large"
           autoComplete="organization"
         />
