@@ -5,4 +5,5 @@ export { leadsAPI } from './leads';
 export { dealsAPI } from './deals';
 export { userAPI } from './user';
 export { propertiesAPI } from './properties';
+export { paymentAPI } from './payment';
 

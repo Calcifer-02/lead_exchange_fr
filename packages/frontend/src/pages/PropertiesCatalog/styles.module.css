@@ -298,7 +298,22 @@
 .paginationContainer {
   display: flex;
   justify-content: center;
-  margin-top: 32px;
+  margin-top: 24px;
+  padding: 16px 0;
+}
+
+.paginationContainer :global(.ant-pagination) {
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.paginationContainer :global(.ant-pagination-options) {
+  margin-right: 20px;
+}
+
+.paginationContainer :global(.ant-select) {
+  min-width: 100px;
 }
 
 /* Modal */
@@ -375,6 +390,22 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
+  }
+
+  .paginationContainer :global(.ant-pagination-item),
+  .paginationContainer :global(.ant-pagination-prev),
+  .paginationContainer :global(.ant-pagination-next) {
+    min-width: 32px;
+    height: 32px;
+    line-height: 32px;
+  }
+
+  .paginationContainer :global(.ant-pagination-options) {
+    display: none;
+  }
+
+  .paginationContainer :global(.ant-pagination-total-text) {
+    display: none;
   }
 }
 

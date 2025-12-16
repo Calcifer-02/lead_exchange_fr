@@ -297,6 +297,14 @@
     gap: 8px;
 }
 
+.paginationContainer :global(.ant-pagination-options) {
+    margin-right: 20px;
+}
+
+.paginationContainer :global(.ant-select) {
+    min-width: 100px;
+}
+
 /* Mobile Filters */
 .mobileFiltersButton {
     display: none;

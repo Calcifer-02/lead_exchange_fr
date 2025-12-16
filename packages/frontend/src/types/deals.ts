@@ -20,6 +20,8 @@ export interface Deal {
 export interface CreateDealRequest {
   leadId: string;
   price: number;
+  // Примечание: sellerUserId устанавливается бэкендом из токена авторизации
+  // buyerUserId заполняется при вызове /accept
 }
 
 export interface UpdateDealRequest {

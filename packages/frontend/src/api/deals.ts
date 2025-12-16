@@ -71,12 +71,25 @@ const acceptDeal = async (dealId: string): Promise<Deal> => {
   return response.data.deal;
 };
 
+/**
+ * Завершает сделку после успешной оплаты
+ * Использует PATCH /v1/deals/{dealId} согласно Swagger API
+ */
+const completeDeal = async (dealId: string): Promise<Deal> => {
+  const response = await apiClient.patch<DealResponse>(
+    `/v1/deals/${dealId}`,
+    { status: 'DEAL_STATUS_COMPLETED' }
+  );
+  return response.data.deal;
+};
+
 const dealsAPI = {
   fetchDeals,
   createDeal,
   getDealById,
   updateDeal,
   acceptDeal,
+  completeDeal,
 };
 
 export { dealsAPI };

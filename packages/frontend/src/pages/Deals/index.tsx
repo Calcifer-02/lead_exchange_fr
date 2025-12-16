@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Card, Tabs, Empty, List, Button, Tag, Space, Spin, Alert, message, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { DollarOutlined } from '@ant-design/icons';
-import { dealsAPI } from '../../api';
+import { dealsAPI, paymentAPI } from '../../api';
 import { useLeads } from '../../hooks/useLeads';
 import type { Deal, DealStatus } from '../../types';
 import styles from './styles.module.css';
@@ -33,6 +33,8 @@ const DealsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [paymentLoading, setPaymentLoading] = useState<string | null>(null);
+  const [completingDeal, setCompletingDeal] = useState(false);
   // Получаем уникальные ID лидов из сделок
   const leadIds = useMemo(() => {
     return Array.from(new Set(deals.map(deal => deal.leadId)));
@@ -61,6 +63,82 @@ const DealsPage: React.FC = () => {
   useEffect(() => {
     setCurrentUserId(localStorage.getItem('userId'));
   }, []);
+
+  // Проверка статуса платежа после возврата с ЮKassa
+  useEffect(() => {
+    const checkPendingPayment = async () => {
+      const pendingPaymentStr = localStorage.getItem('pendingPayment');
+      console.log('Checking pending payment:', pendingPaymentStr);
+
+      if (!pendingPaymentStr) return;
+
+      try {
+        const pendingPayment = JSON.parse(pendingPaymentStr);
+        const { paymentId, dealId, timestamp } = pendingPayment;
+
+        console.log('Pending payment data:', { paymentId, dealId, timestamp });
+
+        // Проверяем, что платеж не старше 1 часа
+        if (Date.now() - timestamp > 3600000) {
+          console.log('Payment too old, removing');
+          localStorage.removeItem('pendingPayment');
+          return;
+        }
+
+        setCompletingDeal(true);
+        message.loading('Проверка статуса оплаты...', 0);
+
+        // Проверяем статус платежа
+        console.log('Fetching payment status for:', paymentId);
+        const payment = await paymentAPI.getPaymentStatus(paymentId);
+        console.log('Payment status:', payment);
+
+        if (payment.status === 'succeeded' && payment.paid) {
+          console.log('Payment succeeded, completing deal:', dealId);
+          // Платеж успешен - завершаем сделку
+          try {
+            const completedDeal = await dealsAPI.completeDeal(dealId);
+            console.log('Deal completed:', completedDeal);
+
+            message.destroy();
+            message.success('Оплата прошла успешно! Сделка завершена, лид передан вам.');
+
+            // Обновляем локальное состояние
+            setDeals(prevDeals =>
+              prevDeals.map(d =>
+                d.dealId === dealId ? completedDeal : d
+              )
+            );
+          } catch {
+            message.destroy();
+            message.warning('Оплата прошла, но не удалось завершить сделку автоматически. Обратитесь в поддержку.');
+          }
+        } else if (payment.status === 'canceled') {
+          message.destroy();
+          message.error('Платеж был отменён');
+        } else if (payment.status === 'pending') {
+          message.destroy();
+          message.info('Платеж в обработке. Статус сделки обновится автоматически.');
+        } else {
+          message.destroy();
+        }
+
+        // Удаляем данные о платеже из localStorage
+        localStorage.removeItem('pendingPayment');
+      } catch (err) {
+        console.error('Error checking payment status:', err);
+        message.destroy();
+        // Не показываем ошибку пользователю, если просто не удалось проверить
+      } finally {
+        setCompletingDeal(false);
+      }
+    };
+
+    // Запускаем проверку только после загрузки сделок
+    if (!loading && deals.length >= 0) {
+      checkPendingPayment();
+    }
+  }, [loading]);
 
   const filterMyDeals = (dealsList: Deal[]): Deal[] => {
     if (!currentUserId) return [];
@@ -118,6 +196,48 @@ const DealsPage: React.FC = () => {
     }
   };
 
+  const handlePayForDeal = async (deal: Deal) => {
+    if (!currentUserId) {
+      message.error('Необходимо авторизоваться');
+      return;
+    }
+
+    try {
+      setPaymentLoading(deal.dealId);
+      message.loading('Создание платежа...', 0);
+
+      // Получаем полный ответ с paymentId
+      const paymentData = {
+        value: deal.price.toFixed(2),
+        orderId: deal.dealId,
+        userId: currentUserId,
+        returnUrl: `${window.location.origin}/deals`, // Возврат на страницу сделок
+      };
+
+      const response = await paymentAPI.createPayment(paymentData);
+      const paymentId = response.payment.id;
+      const paymentUrl = response.payment.confirmation!.confirmation_url;
+
+      // Сохраняем данные платежа для проверки после возврата
+      localStorage.setItem('pendingPayment', JSON.stringify({
+        paymentId,
+        dealId: deal.dealId,
+        timestamp: Date.now()
+      }));
+
+      message.destroy();
+      message.success('Перенаправление на страницу оплаты...');
+
+      // Перенаправляем пользователя на страницу оплаты ЮKassa
+      window.location.href = paymentUrl;
+    } catch {
+      message.destroy();
+      message.error('Не удалось создать платеж. Попробуйте позже.');
+    } finally {
+      setPaymentLoading(null);
+    }
+  };
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('ru-RU').format(price) + ' ₽';
   };
@@ -150,42 +270,46 @@ const DealsPage: React.FC = () => {
         key={deal.dealId}
         className={styles.dealItem}
         actions={[
-          // Кнопки для ПОКУПАТЕЛЯ (только если пользователь не продавец и есть права)
+          // ПОКУПАТЕЛЬ может принять сделку (стать покупателем)
+          // Показываем кнопку если пользователь НЕ продавец и у сделки ещё нет покупателя
           !isSeller && deal.status === 'DEAL_STATUS_PENDING' && !deal.buyerUserId && (
             <Button type="primary" className={styles.actionButton} onClick={() => handleAcceptDeal(deal.dealId)}>
-              Принять сделку
+              Купить лид
             </Button>
           ),
 
-          // Кнопки для ПРОДАВЦА
+          // ПРОДАВЕЦ может отменить сделку (пока она не завершена)
           isSeller && (deal.status === 'DEAL_STATUS_PENDING' || deal.status === 'DEAL_STATUS_ACCEPTED') && (
             <Button
               danger
               className={styles.actionButton}
               onClick={() => handleUpdateDeal(deal.dealId, { status: 'DEAL_STATUS_CANCELLED' })}
             >
-              Отменить
+              Отменить сделку
             </Button>
           ),
 
-          isSeller && deal.status === 'DEAL_STATUS_ACCEPTED' && (
-            <Button
-              type="primary"
-              className={styles.actionButton}
-              onClick={() => handleUpdateDeal(deal.dealId, { status: 'DEAL_STATUS_COMPLETED' })}
-            >
-              Завершить
-            </Button>
-          ),
-
-          // Кнопки для ПОКУПАТЕЛЯ
-          isBuyer && deal.status === 'DEAL_STATUS_PENDING' && (
+          // ПОКУПАТЕЛЬ может отклонить сделку (после принятия, до оплаты)
+          isBuyer && deal.status === 'DEAL_STATUS_ACCEPTED' && (
             <Button
               danger
               className={styles.actionButton}
               onClick={() => handleUpdateDeal(deal.dealId, { status: 'DEAL_STATUS_REJECTED' })}
             >
-              Отклонить
+              Отказаться
+            </Button>
+          ),
+
+          // Кнопка оплаты для ПОКУПАТЕЛЯ когда сделка принята
+          isBuyer && deal.status === 'DEAL_STATUS_ACCEPTED' && (
+            <Button
+              type="primary"
+              className={styles.actionButton}
+              loading={paymentLoading === deal.dealId}
+              onClick={() => handlePayForDeal(deal)}
+              icon={<DollarOutlined />}
+            >
+              Оплатить {formatPrice(deal.price)}
             </Button>
           ),
         ].filter(Boolean)}
@@ -383,6 +507,15 @@ const DealsPage: React.FC = () => {
   return (
     <div>
       <h1 style={{ marginBottom: 24, fontSize: 24, fontWeight: 600 }}>Сделки</h1>
+      {completingDeal && (
+        <Alert
+          message="Обработка платежа"
+          description="Пожалуйста, подождите. Идёт проверка статуса оплаты и завершение сделки..."
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+      )}
       <Card>
         <Tabs
           items={items}

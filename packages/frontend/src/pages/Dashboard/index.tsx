@@ -89,6 +89,7 @@ const DashboardPage = () => {
     console.log('Recommendation action:', id);
   };
 
+
   useEffect(() => {
     const loadStats = async () => {
       try {

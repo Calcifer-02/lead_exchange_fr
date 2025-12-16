@@ -215,3 +215,18 @@
   }
 }
 
+/* Table Pagination */
+
+
+.tableCard :global(.ant-pagination-options) {
+  margin-right: 16px;
+}
+
+.tableCard :global(.ant-select-selector) {
+  border-radius: 6px !important;
+}
+
+.tableCard :global(.ant-pagination-options-size-changer) {
+  margin-inline-end: 16px;
+}
+

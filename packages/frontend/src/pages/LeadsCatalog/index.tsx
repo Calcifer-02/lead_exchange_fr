@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Card,
   Input,
@@ -39,7 +39,8 @@ import {
 } from '@ant-design/icons';
 import { leadsAPI } from '../../api';
 import type { Lead, LeadStatus } from '../../types';
-import { LEAD_STATUS_LABELS } from '../../types/leads';
+import { LEAD_STATUS_LABELS } from '../../types';
+import { maskPhone, maskEmail, maskName } from '../../utils/contactMask';
 import styles from './styles.module.css';
 
 const { Title, Text, Paragraph } = Typography;
@@ -138,22 +139,61 @@ const formatDate = (dateString: string) => {
 };
 
 const LeadsCatalogPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  // Инициализация состояний из URL
+  const initialPage = parseInt(searchParams.get('page') || '1', 10);
+  const initialPageSize = parseInt(searchParams.get('pageSize') || '12', 10);
+  const initialSearch = searchParams.get('search') || '';
+  const initialStatus = (searchParams.get('status') as LeadStatus | 'all') || 'all';
+  const initialTab = searchParams.get('tab') || 'all';
+
   const [leads, setLeads] = useState<Lead[]>([]);
   const [parsedLeads, setParsedLeads] = useState<ParsedLead[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState<LeadFilters>(INITIAL_FILTERS);
+  const [filters, setFilters] = useState<LeadFilters>({
+    ...INITIAL_FILTERS,
+    search: initialSearch,
+    status: initialStatus,
+  });
   const [viewPrefs, setViewPrefs] = useState<ViewPreferences>(INITIAL_VIEW_PREFS);
   const [error, setError] = useState<string | null>(null);
   const [selectedLead, setSelectedLead] = useState<ParsedLead | null>(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState('all');
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [mobileFiltersVisible, setMobileFiltersVisible] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(12);
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const [pageSize, setPageSize] = useState(initialPageSize);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 992);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const initialLoadRef = useRef(true);
-  const navigate = useNavigate();
+
+  // Получение ID текущего пользователя
+  useEffect(() => {
+    const userId = localStorage.getItem('userId');
+    setCurrentUserId(userId);
+  }, []);
+
+  // Синхронизация URL с состоянием пагинации и фильтров
+  useEffect(() => {
+    const params = new URLSearchParams();
+
+    if (currentPage !== 1) params.set('page', currentPage.toString());
+    if (pageSize !== 12) params.set('pageSize', pageSize.toString());
+    if (filters.search) params.set('search', filters.search);
+    if (filters.status !== 'all') params.set('status', filters.status);
+    if (activeTab !== 'all') params.set('tab', activeTab);
+
+    const newSearch = params.toString();
+    const currentSearch = searchParams.toString();
+
+    // Обновляем URL только если параметры изменились
+    if (newSearch !== currentSearch) {
+      setSearchParams(params, { replace: true });
+    }
+  }, [currentPage, pageSize, filters.search, filters.status, activeTab, searchParams, setSearchParams]);
 
   // Отслеживание размера экрана
   useEffect(() => {
@@ -269,6 +309,8 @@ const LeadsCatalogPage = () => {
 
   const clearFilters = () => {
     setFilters(INITIAL_FILTERS);
+    setActiveTab('all');
+    setCurrentPage(1);
     setMobileFiltersVisible(false);
   };
 
@@ -304,6 +346,33 @@ const LeadsCatalogPage = () => {
   const getStatusTagColor = (status: LeadStatus) => {
     const option = STATUS_OPTIONS.find(opt => opt.value === status);
     return option?.color || 'default';
+  };
+
+  // Проверка доступности контактов для лида
+  const areContactsAccessible = (lead: ParsedLead): boolean => {
+    // Владелец лида видит свои контакты
+    if (currentUserId && lead.ownerUserId === currentUserId) {
+      return true;
+    }
+    // Для купленных лидов - контакты доступны покупателю
+    // Здесь нужна проверка через API, но пока показываем только владельцу
+    return false;
+  };
+
+  // Получение отображаемых контактов (замаскированных или реальных)
+  const getDisplayContact = (lead: ParsedLead, field: 'name' | 'phone' | 'email'): string => {
+    const isAccessible = areContactsAccessible(lead);
+
+    switch (field) {
+      case 'name':
+        return isAccessible ? lead.contactName : maskName(lead.contactName);
+      case 'phone':
+        return isAccessible ? lead.contactPhone : maskPhone(lead.contactPhone);
+      case 'email':
+        return isAccessible ? (lead.contactEmail || '') : maskEmail(lead.contactEmail || '');
+      default:
+        return '';
+    }
   };
 
   // Обработчики
@@ -404,17 +473,17 @@ const LeadsCatalogPage = () => {
           <div className={styles.contactInfo}>
             <div className={styles.contactItem}>
               <UserOutlined />
-              <Text ellipsis>{lead.contactName}</Text>
+              <Text ellipsis>{getDisplayContact(lead, 'name')}</Text>
             </div>
             <div className={styles.contactItem}>
               <PhoneOutlined />
-              <Text ellipsis>{lead.contactPhone}</Text>
+              <Text ellipsis>{getDisplayContact(lead, 'phone')}</Text>
             </div>
             <div className={styles.contactItem}>
               {lead.contactEmail ? (
                 <>
                   <MailOutlined />
-                  <Text ellipsis>{lead.contactEmail}</Text>
+                  <Text ellipsis>{getDisplayContact(lead, 'email')}</Text>
                 </>
               ) : (
                 <Text type="secondary" style={{ fontSize: 13 }}>&nbsp;</Text>
@@ -435,19 +504,21 @@ const LeadsCatalogPage = () => {
                   onClick={(e) => { e.stopPropagation(); navigate(`/leads-catalog/${lead.leadId}`); }}
                 />
               </Tooltip>
-              <Tooltip title="Позвонить">
+              <Tooltip title={areContactsAccessible(lead) ? "Позвонить" : "Контакты скрыты до покупки"}>
                 <Button
                   type="text"
                   icon={<PhoneOutlined />}
                   size="small"
+                  disabled={!areContactsAccessible(lead)}
                   onClick={(e) => { e.stopPropagation(); handleContact(lead, 'phone'); }}
                 />
               </Tooltip>
-              <Tooltip title="Написать">
+              <Tooltip title={areContactsAccessible(lead) ? "Написать" : "Контакты скрыты до покупки"}>
                 <Button
                   type="text"
                   icon={<MailOutlined />}
                   size="small"
+                  disabled={!areContactsAccessible(lead)}
                   onClick={(e) => { e.stopPropagation(); handleContact(lead, 'email'); }}
                 />
               </Tooltip>
@@ -592,18 +663,33 @@ const LeadsCatalogPage = () => {
 
           <Descriptions title="Контактная информация" bordered column={1} size="small">
             <Descriptions.Item label="Имя">
-              <UserOutlined /> {selectedLead.contactName}
+              <UserOutlined /> {getDisplayContact(selectedLead, 'name')}
             </Descriptions.Item>
             <Descriptions.Item label="Телефон">
-              <a href={`tel:${selectedLead.contactPhone}`}>
-                <PhoneOutlined /> {selectedLead.contactPhone}
-              </a>
+              {areContactsAccessible(selectedLead) ? (
+                <a href={`tel:${selectedLead.contactPhone}`}>
+                  <PhoneOutlined /> {selectedLead.contactPhone}
+                </a>
+              ) : (
+                <span><PhoneOutlined /> {getDisplayContact(selectedLead, 'phone')}</span>
+              )}
             </Descriptions.Item>
             {selectedLead.contactEmail && (
               <Descriptions.Item label="Email">
-                <a href={`mailto:${selectedLead.contactEmail}`}>
-                  <MailOutlined /> {selectedLead.contactEmail}
-                </a>
+                {areContactsAccessible(selectedLead) ? (
+                  <a href={`mailto:${selectedLead.contactEmail}`}>
+                    <MailOutlined /> {selectedLead.contactEmail}
+                  </a>
+                ) : (
+                  <span><MailOutlined /> {getDisplayContact(selectedLead, 'email')}</span>
+                )}
+              </Descriptions.Item>
+            )}
+            {!areContactsAccessible(selectedLead) && (
+              <Descriptions.Item label="">
+                <Text type="warning" style={{ fontSize: 12 }}>
+                  Контакты будут доступны после покупки лида
+                </Text>
               </Descriptions.Item>
             )}
           </Descriptions>
@@ -795,18 +881,20 @@ const LeadsCatalogPage = () => {
                 )}
 
                 {/* Пагинация */}
-                {filteredLeads.length > pageSize && (
+                {filteredLeads.length > 0 && (
                   <div className={styles.paginationContainer}>
                     <Pagination
                       current={currentPage}
                       pageSize={pageSize}
                       total={filteredLeads.length}
                       onChange={handlePageChange}
+                      onShowSizeChange={handlePageChange}
                       showSizeChanger={!isMobile}
                       showQuickJumper={!isMobile}
                       pageSizeOptions={['12', '24', '48', '96']}
-                      showTotal={!isMobile ? (total) => `Всего ${total} лидов` : undefined}
+                      showTotal={!isMobile ? (total, range) => `${range[0]}-${range[1]} из ${total}` : undefined}
                       size={isMobile ? 'small' : 'default'}
+                      locale={{ items_per_page: '/ стр.' }}
                     />
                   </div>
                 )}

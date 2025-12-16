@@ -31,6 +31,7 @@ import { leadsAPI, dealsAPI } from '../../api';
 import type { Lead } from '../../types';
 import type { CreateDealRequest } from '../../types/deals';
 import { LEAD_STATUS_LABELS } from '../../types/leads';
+import { maskPhone, maskEmail, maskName } from '../../utils/contactMask';
 import styles from './styles.module.css';
 
 const { Title, Text, Paragraph } = Typography;
@@ -89,6 +90,13 @@ const LeadDetailPage: React.FC = () => {
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [modalVisible, setModalVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  // Получение ID текущего пользователя
+  useEffect(() => {
+    const userId = localStorage.getItem('userId');
+    setCurrentUserId(userId);
+  }, []);
 
   useEffect(() => {
     const fetchLead = async () => {
@@ -149,6 +157,38 @@ const LeadDetailPage: React.FC = () => {
 
   const isFavorite = (leadId: string) => favorites.has(leadId);
 
+  // Проверка, является ли текущий пользователь владельцем лида
+  const isOwner = Boolean(currentUserId && lead?.ownerUserId === currentUserId);
+
+  // Проверка доступности контактов для лида
+  const areContactsAccessible = (): boolean => {
+    if (!lead) return false;
+    // Владелец лида видит свои контакты
+    if (currentUserId && lead.ownerUserId === currentUserId) {
+      return true;
+    }
+    // Для купленных лидов - контакты доступны покупателю
+    // TODO: Здесь нужна проверка через API - является ли текущий пользователь покупателем
+    return false;
+  };
+
+  // Получение отображаемых контактов (замаскированных или реальных)
+  const getDisplayContact = (field: 'name' | 'phone' | 'email'): string => {
+    if (!lead) return '';
+    const isAccessible = areContactsAccessible();
+
+    switch (field) {
+      case 'name':
+        return isAccessible ? lead.contactName : maskName(lead.contactName);
+      case 'phone':
+        return isAccessible ? lead.contactPhone : maskPhone(lead.contactPhone);
+      case 'email':
+        return isAccessible ? (lead.contactEmail || '') : maskEmail(lead.contactEmail || '');
+      default:
+        return '';
+    }
+  };
+
   const handleContact = (method: 'phone' | 'email') => {
     if (!lead) return;
     const contact = method === 'phone' ? lead.contactPhone : lead.contactEmail;
@@ -203,9 +243,11 @@ const LeadDetailPage: React.FC = () => {
     try {
       setSubmitting(true);
 
+      // Согласно API: продавец (текущий пользователь) создаёт сделку
+      // sellerUserId устанавливается бэкендом автоматически из токена
       const dealData: CreateDealRequest = {
         leadId: lead.leadId,
-        price: Number(price)
+        price: Number(price),
       };
       await dealsAPI.createDeal(dealData);
 
@@ -392,7 +434,7 @@ const LeadDetailPage: React.FC = () => {
                 <UserOutlined className={styles.contactIcon} />
                 <div>
                   <Text type="secondary">Имя</Text>
-                  <div><Text strong>{lead.contactName}</Text></div>
+                  <div><Text strong>{getDisplayContact('name')}</Text></div>
                 </div>
               </div>
 
@@ -401,9 +443,13 @@ const LeadDetailPage: React.FC = () => {
                 <div>
                   <Text type="secondary">Телефон</Text>
                   <div>
-                    <a href={`tel:${lead.contactPhone}`}>
-                      <Text strong>{lead.contactPhone}</Text>
-                    </a>
+                    {areContactsAccessible() ? (
+                      <a href={`tel:${lead.contactPhone}`}>
+                        <Text strong>{lead.contactPhone}</Text>
+                      </a>
+                    ) : (
+                      <Text strong>{getDisplayContact('phone')}</Text>
+                    )}
                   </div>
                 </div>
               </div>
@@ -414,12 +460,25 @@ const LeadDetailPage: React.FC = () => {
                   <div>
                     <Text type="secondary">Email</Text>
                     <div>
-                      <a href={`mailto:${lead.contactEmail}`}>
-                        <Text strong>{lead.contactEmail}</Text>
-                      </a>
+                      {areContactsAccessible() ? (
+                        <a href={`mailto:${lead.contactEmail}`}>
+                          <Text strong>{lead.contactEmail}</Text>
+                        </a>
+                      ) : (
+                        <Text strong>{getDisplayContact('email')}</Text>
+                      )}
                     </div>
                   </div>
                 </div>
+              )}
+
+              {!areContactsAccessible() && (
+                <Alert
+                  type="warning"
+                  message="Контакты скрыты"
+                  description="Полная контактная информация будет доступна после покупки лида"
+                  showIcon
+                />
               )}
             </Space>
           </Card>
@@ -441,8 +500,10 @@ const LeadDetailPage: React.FC = () => {
                 size="large"
                 block
                 onClick={() => setModalVisible(true)}
+                disabled={!isOwner}
+                title={!isOwner ? 'Только владелец может выставить лид на продажу' : undefined}
               >
-                Начать сделку
+                {isOwner ? 'Выставить на продажу' : 'Только для владельца'}
               </Button>
 
               <Button
@@ -450,8 +511,10 @@ const LeadDetailPage: React.FC = () => {
                 block
                 icon={<PhoneOutlined />}
                 onClick={() => handleContact('phone')}
+                disabled={!areContactsAccessible()}
+                title={!areContactsAccessible() ? 'Доступно после покупки лида' : undefined}
               >
-                Позвонить
+                {areContactsAccessible() ? 'Позвонить' : 'Позвонить (после покупки)'}
               </Button>
 
               <Button
@@ -459,8 +522,10 @@ const LeadDetailPage: React.FC = () => {
                 block
                 icon={<MailOutlined />}
                 onClick={() => handleContact('email')}
+                disabled={!areContactsAccessible()}
+                title={!areContactsAccessible() ? 'Доступно после покупки лида' : undefined}
               >
-                Написать на email
+                {areContactsAccessible() ? 'Написать на email' : 'Написать (после покупки)'}
               </Button>
 
               <Divider style={{ margin: '12px 0' }} />
@@ -484,9 +549,9 @@ const LeadDetailPage: React.FC = () => {
         </Col>
       </Row>
 
-      {/* Модальное окно создания сделки */}
+      {/* Модальное окно создания сделки (выставление на продажу) */}
       <Modal
-        title="Создание сделки"
+        title="Выставить лид на продажу"
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         footer={null}
@@ -497,7 +562,7 @@ const LeadDetailPage: React.FC = () => {
             <Text strong>{lead.title}</Text>
             {price && (
               <Text type="secondary">
-                Желаемая цена: {formatPrice(price)}
+                Рекомендуемая цена: {formatPrice(price)}
               </Text>
             )}
             <Text type="secondary">
@@ -514,13 +579,13 @@ const LeadDetailPage: React.FC = () => {
           }}
         >
           <Form.Item
-            label="Сумма сделки (₽)"
+            label="Цена продажи (₽)"
             name="amount"
             rules={[
-              { required: true, message: 'Введите сумму сделки' },
-              { type: 'number', min: 1, message: 'Сумма должна быть больше 0' }
+              { required: true, message: 'Введите цену' },
+              { type: 'number', min: 1, message: 'Цена должна быть больше 0' }
             ]}
-            extra="Укажите сумму, за которую вы готовы приобрести этот лид"
+            extra="Укажите цену, за которую вы готовы продать этот лид. Покупатели смогут принять ваше предложение."
           >
             <InputNumber
               style={{ width: '100%' }}
@@ -528,7 +593,7 @@ const LeadDetailPage: React.FC = () => {
               min={1}
               formatter={value => value ? `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : ''}
               parser={(value) => (value ? Number(value.replace(/\s/g, '')) : 0) as unknown as 1}
-              placeholder="Введите сумму"
+              placeholder="Введите цену"
             />
           </Form.Item>
 
@@ -538,7 +603,7 @@ const LeadDetailPage: React.FC = () => {
                 Отмена
               </Button>
               <Button type="primary" htmlType="submit" loading={submitting}>
-                Создать сделку
+                Выставить на продажу
               </Button>
             </Space>
           </Form.Item>

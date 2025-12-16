@@ -91,7 +91,7 @@ const AppSidebarComponent = ({ onNavigate }: SidebarProps) => {
     <div className={styles.sidebar}>
       <Link to="/dashboard" className={styles.brand} onClick={onNavigate}>
         <div className={styles.brandIcon}>
-          <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABwAAAAcCAMAAABF0y+mAAAAdVBMVEUAe/sAd/oAb/VypfPe6vkAYs8AdPH////o7PAAVbro8PoDX7/v8fIAb+cAUKNYcZkAWtRnbHV/jKEcW6pVaIh6h5oAZeaBodNhd50AaNwAb/eEr/F4e38ALXUAb+IAHmEAZc4AefbD1e8AUsLJ0NsAT7NKZIyk4XqWAAAAa0lEQVR4AdTMMRZAMBRE0QgSAACQELD/JfL7TKH02ntm2G9zODbuer5AO1fKIATKI4lVxAlpbNc0I80LBrWsIh9s66bFz10v34bRZtNMtiiNbd3MN3OQUXzHxsxxAqPEdSsyoKM2zwZ3igMARnwIErfWw3EAAAAASUVORK5CYII=" alt="Lead Exchange" />
+          <img src="/logo.svg" alt="Lead Exchange" />
         </div>
         <div className={styles.brandTitle}>
           Lead Exchange

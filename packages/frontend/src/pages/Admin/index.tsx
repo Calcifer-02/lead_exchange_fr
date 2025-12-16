@@ -93,6 +93,11 @@ const AdminPage = () => {
   // Активная вкладка
   const [activeTab, setActiveTab] = useState('users');
 
+  // Состояния для пагинации
+  const [usersPageSize, setUsersPageSize] = useState(10);
+  const [leadsPageSize, setLeadsPageSize] = useState(10);
+  const [propertiesPageSize, setPropertiesPageSize] = useState(10);
+
   // Состояния для пользователей
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1020,8 +1025,10 @@ const AdminPage = () => {
               rowKey="id"
               loading={loading}
               pagination={{
-                pageSize: 10,
+                pageSize: usersPageSize,
                 showSizeChanger: true,
+                pageSizeOptions: ['10', '20', '50', '100'],
+                onShowSizeChange: (_, size) => setUsersPageSize(size),
                 showTotal: (total, range) => `${range[0]}-${range[1]} из ${total}`,
               }}
               scroll={{ x: 1000 }}
@@ -1119,8 +1126,10 @@ const AdminPage = () => {
               rowKey="leadId"
               loading={leadsLoading}
               pagination={{
-                pageSize: 10,
+                pageSize: leadsPageSize,
                 showSizeChanger: true,
+                pageSizeOptions: ['10', '20', '50', '100'],
+                onShowSizeChange: (_, size) => setLeadsPageSize(size),
                 showTotal: (total, range) => `${range[0]}-${range[1]} из ${total}`,
               }}
               scroll={{ x: 900 }}
@@ -1218,8 +1227,10 @@ const AdminPage = () => {
               rowKey="propertyId"
               loading={propertiesLoading}
               pagination={{
-                pageSize: 10,
+                pageSize: propertiesPageSize,
                 showSizeChanger: true,
+                pageSizeOptions: ['10', '20', '50', '100'],
+                onShowSizeChange: (_, size) => setPropertiesPageSize(size),
                 showTotal: (total, range) => `${range[0]}-${range[1]} из ${total}`,
               }}
               scroll={{ x: 1100 }}

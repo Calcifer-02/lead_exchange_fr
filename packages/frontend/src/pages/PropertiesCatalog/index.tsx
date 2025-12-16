@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Card,
   Input,
@@ -80,19 +80,53 @@ const SORT_OPTIONS = [
   { value: 'rooms', label: 'Комнаты' },
 ];
 
-const ITEMS_PER_PAGE = 12;
 
 const PropertiesCatalogPage = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Инициализация состояний из URL
+  const initialPage = parseInt(searchParams.get('page') || '1', 10);
+  const initialPageSize = parseInt(searchParams.get('pageSize') || '12', 10);
+  const initialSearch = searchParams.get('search') || '';
+  const initialStatus = (searchParams.get('status') as PropertyStatus | 'all') || 'all';
+  const initialType = (searchParams.get('type') as PropertyType | 'all') || 'all';
+  const initialTab = searchParams.get('tab') || 'all';
+
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState<PropertyFilters>(INITIAL_FILTERS);
+  const [filters, setFilters] = useState<PropertyFilters>({
+    ...INITIAL_FILTERS,
+    search: initialSearch,
+    status: initialStatus,
+    propertyType: initialType,
+  });
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const [pageSize, setPageSize] = useState(initialPageSize);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState('all');
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  // Синхронизация URL с состоянием пагинации и фильтров
+  useEffect(() => {
+    const params = new URLSearchParams();
+
+    if (currentPage !== 1) params.set('page', currentPage.toString());
+    if (pageSize !== 12) params.set('pageSize', pageSize.toString());
+    if (filters.search) params.set('search', filters.search);
+    if (filters.status !== 'all') params.set('status', filters.status);
+    if (filters.propertyType !== 'all') params.set('type', filters.propertyType);
+    if (activeTab !== 'all') params.set('tab', activeTab);
+
+    const newSearch = params.toString();
+    const currentSearch = searchParams.toString();
+
+    if (newSearch !== currentSearch) {
+      setSearchParams(params, { replace: true });
+    }
+  }, [currentPage, pageSize, filters.search, filters.status, filters.propertyType, activeTab, searchParams, setSearchParams]);
 
   // Загрузка объектов
   const loadProperties = useCallback(async () => {
@@ -170,9 +204,23 @@ const PropertiesCatalogPage = () => {
 
   // Пагинация
   const paginatedProperties = useMemo(() => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredProperties.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [filteredProperties, currentPage]);
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredProperties.slice(startIndex, startIndex + pageSize);
+  }, [filteredProperties, currentPage, pageSize]);
+
+  // Сброс страницы при изменении фильтров
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, activeTab]);
+
+  // Обработчик изменения страницы
+  const handlePageChange = useCallback((page: number, size?: number) => {
+    setCurrentPage(page);
+    if (size && size !== pageSize) {
+      setPageSize(size);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [pageSize]);
 
   // Обработчики
   const handlePropertyClick = (property: Property) => {
@@ -205,6 +253,7 @@ const PropertiesCatalogPage = () => {
 
   const handleResetFilters = () => {
     setFilters(INITIAL_FILTERS);
+    setActiveTab('all');
     setCurrentPage(1);
   };
 
@@ -506,15 +555,18 @@ const PropertiesCatalogPage = () => {
             </div>
           )}
 
-          {filteredProperties.length > ITEMS_PER_PAGE && (
+          {filteredProperties.length > 0 && (
             <div className={styles.paginationContainer}>
               <Pagination
                 current={currentPage}
                 total={filteredProperties.length}
-                pageSize={ITEMS_PER_PAGE}
-                onChange={setCurrentPage}
-                showSizeChanger={false}
+                pageSize={pageSize}
+                onChange={handlePageChange}
+                onShowSizeChange={handlePageChange}
+                showSizeChanger
+                pageSizeOptions={['12', '24', '48', '96']}
                 showTotal={(total, range) => `${range[0]}-${range[1]} из ${total}`}
+                locale={{ items_per_page: '/ стр.' }}
               />
             </div>
           )}
