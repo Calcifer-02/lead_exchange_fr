@@ -13,7 +13,8 @@ import type { UploadFile, UploadProps } from 'antd';
 import type { RcFile } from 'antd/es/upload';
 import { useNavigate } from 'react-router-dom';
 import { leadsAPI } from '../../api';
-import type { CreateLeadRequest } from '../../types';
+import type { CreateLeadRequest, PropertyType } from '../../types';
+import { PROPERTY_TYPE_LABELS } from '../../types';
 import ImageGallery from '../../components/ImageGallery';
 import styles from './styles.module.css';
 
@@ -29,7 +30,7 @@ interface FormValues {
   floor: number | undefined;
   floorsTotal: number | undefined;
   rooms: number | undefined;
-  propertyType: string;
+  propertyType: PropertyType;
   dealType: DealType;
   description: string;
   buildingType: BuildingType;
@@ -44,11 +45,18 @@ const INITIAL_VALUES: FormValues = {
   floor: undefined,
   floorsTotal: undefined,
   rooms: undefined,
-  propertyType: '',
+  propertyType: 'PROPERTY_TYPE_APARTMENT',
   dealType: 'sale',
   description: '',
   buildingType: 'new',
 };
+
+const PROPERTY_TYPE_OPTIONS = [
+  { value: 'PROPERTY_TYPE_APARTMENT', label: PROPERTY_TYPE_LABELS.PROPERTY_TYPE_APARTMENT },
+  { value: 'PROPERTY_TYPE_HOUSE', label: PROPERTY_TYPE_LABELS.PROPERTY_TYPE_HOUSE },
+  { value: 'PROPERTY_TYPE_COMMERCIAL', label: PROPERTY_TYPE_LABELS.PROPERTY_TYPE_COMMERCIAL },
+  { value: 'PROPERTY_TYPE_LAND', label: PROPERTY_TYPE_LABELS.PROPERTY_TYPE_LAND },
+];
 
 const formatPrice = (value?: number) =>
   typeof value === 'number' ? new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 0 }).format(value) : '—';
@@ -293,12 +301,7 @@ const NewObjectPage = () => {
                 <Form.Item label="Тип объекта" name="propertyType" rules={[{ required: true, message: 'Выберите тип объекта' }]}>
                   <Select
                     size="large"
-                    options={[
-                      { value: 'flat', label: 'Квартира' },
-                      { value: 'house', label: 'Дом' },
-                      { value: 'apartment', label: 'Апартаменты' },
-                      { value: 'commercial', label: 'Коммерческая недвижимость' },
-                    ]}
+                    options={PROPERTY_TYPE_OPTIONS}
                     placeholder="Выберите тип"
                   />
                 </Form.Item>

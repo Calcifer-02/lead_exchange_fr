@@ -26,6 +26,7 @@ const getProperties = async (filter?: PropertyListFilter): Promise<Property[]> =
       if (filter.maxRooms !== undefined) params['filter.maxRooms'] = filter.maxRooms;
       if (filter.minPrice) params['filter.minPrice'] = filter.minPrice;
       if (filter.maxPrice) params['filter.maxPrice'] = filter.maxPrice;
+      if (filter.city) params['filter.city'] = filter.city;
     }
 
     const response = await apiClient.get<PropertyListResponse>('/v1/properties', { params });

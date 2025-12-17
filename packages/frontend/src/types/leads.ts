@@ -1,11 +1,14 @@
 // Lead API types based on backend Swagger
 
+import type { PropertyType } from './properties';
+
 export type LeadStatus =
   | 'LEAD_STATUS_UNSPECIFIED'
   | 'LEAD_STATUS_NEW'
   | 'LEAD_STATUS_PUBLISHED'
   | 'LEAD_STATUS_PURCHASED'
   | 'LEAD_STATUS_DELETED';
+
 
 export interface Lead {
   leadId: string;           // UUID лида
@@ -20,15 +23,19 @@ export interface Lead {
   createdUserId: string;    // создатель
   createdAt: string;
   updatedAt: string;
+  city?: string;            // город
+  propertyType?: PropertyType; // тип недвижимости
 }
 
 export interface CreateLeadRequest {
   title: string;
   description: string;
-  requirement: string;      // base64 encoded JSON
+  requirement?: string;      // base64 encoded JSON
   contactName: string;
   contactPhone: string;
-  contactEmail: string;
+  contactEmail?: string;
+  city?: string;
+  propertyType?: PropertyType;
 }
 
 export interface UpdateLeadRequest {
@@ -37,16 +44,28 @@ export interface UpdateLeadRequest {
   requirement?: string;     // base64 encoded JSON
   status?: LeadStatus;
   ownerUserId?: string;
+  city?: string;
 }
 
 export interface ListLeadsFilter {
   status?: LeadStatus;
   ownerUserId?: string;
   createdUserId?: string;
+  city?: string;
+  propertyType?: PropertyType;
+}
+
+export interface ListLeadsRequest {
+  filter?: ListLeadsFilter;
+  pageSize?: number;
+  pageToken?: string;
+  orderBy?: string;
+  orderDirection?: string;
 }
 
 export interface ListLeadsResponse {
   leads: Lead[];
+  nextPageToken?: string;
 }
 
 export interface LeadResponse {
@@ -81,3 +100,4 @@ export const LEAD_STATUS_COLORS: Record<LeadStatus, { text: string; bg: string; 
   LEAD_STATUS_PURCHASED: { text: '#7C3AED', bg: '#F3E8FF', border: '#C4B5FD' },
   LEAD_STATUS_DELETED: { text: '#DC2626', bg: '#FEF2F2', border: '#FCA5A5' },
 };
+

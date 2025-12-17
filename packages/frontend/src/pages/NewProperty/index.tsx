@@ -32,6 +32,7 @@ interface FormValues {
   title: string;
   description: string;
   address: string;
+  city: string;
   price: number | undefined;
   area: number | undefined;
   rooms: number | undefined;
@@ -42,6 +43,7 @@ const INITIAL_VALUES: FormValues = {
   title: '',
   description: '',
   address: '',
+  city: '',
   price: undefined,
   area: undefined,
   rooms: undefined,
@@ -81,6 +83,7 @@ const NewPropertyPage = () => {
         area: formValues.area || 0,
         rooms: formValues.rooms || 0,
         propertyType: formValues.propertyType,
+        city: formValues.city || undefined,
       };
 
       await propertiesAPI.createProperty(propertyData);
@@ -190,19 +193,32 @@ const NewPropertyPage = () => {
                 Местоположение
               </Title>
 
-              <Form.Item
-                name="address"
-                label="Адрес"
-                rules={[
-                  { required: true, message: 'Введите адрес' },
-                  { min: 5, message: 'Минимум 5 символов' },
-                ]}
-              >
-                <Input
-                  placeholder="Город, улица, дом"
-                  size="large"
-                />
-              </Form.Item>
+              <div className={styles.fieldRow}>
+                <Form.Item
+                  name="city"
+                  label="Город"
+                  rules={[{ required: true, message: 'Укажите город' }]}
+                >
+                  <Input
+                    placeholder="Москва"
+                    size="large"
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  name="address"
+                  label="Адрес"
+                  rules={[
+                    { required: true, message: 'Введите адрес' },
+                    { min: 5, message: 'Минимум 5 символов' },
+                  ]}
+                >
+                  <Input
+                    placeholder="Улица, дом"
+                    size="large"
+                  />
+                </Form.Item>
+              </div>
             </div>
 
             <Divider />
@@ -328,9 +344,9 @@ const NewPropertyPage = () => {
                   )}
                 </div>
 
-                {currentValues.address && (
+                {(currentValues.city || currentValues.address) && (
                   <div className={styles.previewAddress}>
-                    <EnvironmentOutlined /> {currentValues.address}
+                    <EnvironmentOutlined /> {[currentValues.city, currentValues.address].filter(Boolean).join(', ')}
                   </div>
                 )}
 

@@ -87,24 +87,18 @@ const AuthPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const registerData: Record<string, string> = {
+      const registerData: RegisterRequest = {
         email: values.email,
         password: values.password,
         firstName: values.firstName,
         lastName: values.lastName,
+        phone: values.phone ? values.phone.replace(/[^\d+]/g, '') : '', // Оставляем только цифры и +
+        agencyName: values.agencyName || '',
       };
-
-      // Добавляем опциональные поля только если они заполнены
-      if (values.phone) {
-        registerData.phone = values.phone.replace(/[^\d+]/g, ''); // Оставляем только цифры и +
-      }
-      if (values.agencyName) {
-        registerData.agencyName = values.agencyName;
-      }
 
       console.log('Отправляем данные регистрации:', registerData);
 
-      await authAPI.register(registerData as unknown as RegisterRequest);
+      await authAPI.register(registerData);
       message.success('Регистрация успешна! Теперь вы можете войти.');
 
       // Сохраняем данные профиля для будущего использования

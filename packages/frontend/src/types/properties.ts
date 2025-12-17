@@ -28,6 +28,7 @@ export interface Property {
   createdUserId: string;
   createdAt: string;
   updatedAt: string;
+  city?: string;
 }
 
 export interface CreatePropertyRequest {
@@ -38,6 +39,7 @@ export interface CreatePropertyRequest {
   area: number;
   rooms: number;
   propertyType: PropertyType;
+  city?: string;
 }
 
 export interface UpdatePropertyRequest {
@@ -50,6 +52,7 @@ export interface UpdatePropertyRequest {
   propertyType?: PropertyType;
   status?: PropertyStatus;
   ownerUserId?: string;
+  city?: string;
 }
 
 export interface PropertyListFilter {
@@ -61,10 +64,20 @@ export interface PropertyListFilter {
   maxRooms?: number;
   minPrice?: string;
   maxPrice?: string;
+  city?: string;
+}
+
+export interface ListPropertiesRequest {
+  filter?: PropertyListFilter;
+  pageSize?: number;
+  pageToken?: string;
+  orderBy?: string;
+  orderDirection?: string;
 }
 
 export interface PropertyListResponse {
   properties: Property[];
+  nextPageToken?: string;
 }
 
 export interface PropertyMatch {
@@ -79,6 +92,7 @@ export interface MatchPropertiesFilter {
   maxRooms?: number;
   propertyType?: PropertyType;
   status?: PropertyStatus;
+  city?: string;
 }
 
 export interface MatchPropertiesRequest {
@@ -111,4 +125,3 @@ export const PROPERTY_STATUS_LABELS: Record<PropertyStatus, string> = {
   PROPERTY_STATUS_SOLD: 'Продан',
   PROPERTY_STATUS_DELETED: 'Удалён',
 };
-

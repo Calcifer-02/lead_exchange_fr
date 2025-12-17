@@ -6,6 +6,7 @@ import {
   MailOutlined,
   SaveOutlined,
   FileTextOutlined,
+  EnvironmentOutlined,
 } from '@ant-design/icons';
 import {
   Button,
@@ -13,10 +14,12 @@ import {
   Input,
   Typography,
   message,
+  Select,
 } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { leadsAPI } from '../../api';
-import type { CreateLeadRequest } from '../../types';
+import type { CreateLeadRequest, PropertyType } from '../../types';
+import { PROPERTY_TYPE_LABELS } from '../../types';
 import styles from './styles.module.css';
 
 const { Title, Text } = Typography;
@@ -28,6 +31,8 @@ interface FormValues {
   contactName: string;
   contactPhone: string;
   contactEmail: string;
+  city: string;
+  propertyType: PropertyType;
 }
 
 const INITIAL_VALUES: FormValues = {
@@ -36,7 +41,16 @@ const INITIAL_VALUES: FormValues = {
   contactName: '',
   contactPhone: '',
   contactEmail: '',
+  city: '',
+  propertyType: 'PROPERTY_TYPE_APARTMENT',
 };
+
+const PROPERTY_TYPE_OPTIONS = [
+  { value: 'PROPERTY_TYPE_APARTMENT', label: PROPERTY_TYPE_LABELS.PROPERTY_TYPE_APARTMENT },
+  { value: 'PROPERTY_TYPE_HOUSE', label: PROPERTY_TYPE_LABELS.PROPERTY_TYPE_HOUSE },
+  { value: 'PROPERTY_TYPE_COMMERCIAL', label: PROPERTY_TYPE_LABELS.PROPERTY_TYPE_COMMERCIAL },
+  { value: 'PROPERTY_TYPE_LAND', label: PROPERTY_TYPE_LABELS.PROPERTY_TYPE_LAND },
+];
 
 const NewLeadPage = () => {
   const navigate = useNavigate();
@@ -86,6 +100,8 @@ const NewLeadPage = () => {
         contactName: formValues.contactName,
         contactPhone: formValues.contactPhone,
         contactEmail: formValues.contactEmail,
+        city: formValues.city || undefined,
+        propertyType: formValues.propertyType || undefined,
       };
 
       await leadsAPI.createLead(leadData);
@@ -153,6 +169,32 @@ const NewLeadPage = () => {
                   size="large"
                 />
               </Form.Item>
+
+              <div className={styles.fieldRow}>
+                <Form.Item
+                  name="city"
+                  label="Город"
+                  rules={[{ required: true, message: 'Укажите город' }]}
+                >
+                  <Input
+                    prefix={<EnvironmentOutlined style={{ color: '#6b778c' }} />}
+                    placeholder="Москва"
+                    size="large"
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  name="propertyType"
+                  label="Тип недвижимости"
+                  rules={[{ required: true, message: 'Выберите тип' }]}
+                >
+                  <Select
+                    placeholder="Выберите тип"
+                    options={PROPERTY_TYPE_OPTIONS}
+                    size="large"
+                  />
+                </Form.Item>
+              </div>
 
               <Form.Item
                 name="description"
@@ -264,6 +306,28 @@ const NewLeadPage = () => {
                 {currentValues.title || 'Не указано'}
               </span>
             </div>
+
+            {/* Город и тип недвижимости */}
+            {(currentValues.city || currentValues.propertyType) && (
+              <div className={styles.previewSection}>
+                {currentValues.city && (
+                  <>
+                    <span className={styles.previewLabel}>Город</span>
+                    <span className={styles.previewValue}>
+                      {currentValues.city}
+                    </span>
+                  </>
+                )}
+                {currentValues.propertyType && (
+                  <>
+                    <span className={styles.previewLabel}>Тип недвижимости</span>
+                    <span className={styles.previewValue}>
+                      {PROPERTY_TYPE_LABELS[currentValues.propertyType]}
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Описание */}
             {currentValues.description && (

@@ -22,6 +22,12 @@ const buildFilterParams = (filter?: ListLeadsFilter): Record<string, string> => 
   if (filter?.createdUserId) {
     params['filter.createdUserId'] = filter.createdUserId;
   }
+  if (filter?.city) {
+    params['filter.city'] = filter.city;
+  }
+  if (filter?.propertyType) {
+    params['filter.propertyType'] = filter.propertyType;
+  }
 
   return params;
 };
